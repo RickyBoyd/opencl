@@ -1,0 +1,6 @@
+*.o
+
+d2q9-bgk.exe
+final_state.dat
+final_state.plt
+av_vels.dat
