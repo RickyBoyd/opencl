@@ -1,7 +1,6 @@
 # Makefile
 
-EXE1=d2q9-bgk.exe
-EXES=$(EXE1)
+EXE=d2q9-bgk
 
 CC=gcc
 CFLAGS= -std=c99 -lm -Wall -O3 -DDEBUG
@@ -11,9 +10,9 @@ AV_VELS_FILE=./av_vels.dat
 REF_FINAL_STATE_FILE=check/128x128.final_state.dat
 REF_AV_VELS_FILE=check/128x128.av_vels.dat
 
-all: $(EXES)
+all: $(EXE)
 
-$(EXES): %.exe : %.c
+$(EXE): $(EXE).c
 	$(CC) $(CFLAGS) $^ -o $@
 
 check:
@@ -22,5 +21,5 @@ check:
 .PHONY: all check clean
 
 clean:
-	rm -f $(EXES)
+	rm -f $(EXE)
 
