@@ -66,6 +66,7 @@
 #define NSPEEDS         9
 #define FINALSTATEFILE  "final_state.dat"
 #define AVVELSFILE      "av_vels.dat"
+#define OCLFILE         "kernels.cl"
 
 /* struct to hold the parameter values */
 typedef struct
@@ -78,6 +79,14 @@ typedef struct
   double accel;         /* density redistribution */
   double omega;         /* relaxation parameter */
 } t_param;
+
+/* struct to hold OpenCL objects */
+typedef struct
+{
+  cl_device_id device;
+  cl_context   context;
+  cl_program   program;
+} t_ocl;
 
 /* struct to hold the 'speed' values */
 typedef struct
@@ -92,33 +101,33 @@ typedef struct
 /* load params, allocate memory, load obstacles & initialise fluid particle densities */
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-               int** obstacles_ptr, double** av_vels_ptr);
+               int** obstacles_ptr, double** av_vels_ptr, t_ocl* ocl);
 
 /*
 ** The main calculation methods.
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles);
-int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
-int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
-int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_ocl ocl);
+int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_ocl ocl);
+int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_ocl ocl);
+int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_ocl ocl);
+int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_ocl ocl);
 int write_values(const t_param params, t_speed* cells, int* obstacles, double* av_vels);
 
 /* finalise, including freeing up allocated memory */
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-             int** obstacles_ptr, double** av_vels_ptr);
+             int** obstacles_ptr, double** av_vels_ptr, t_ocl ocl);
 
 /* Sum all the densities in the grid.
 ** The total should remain constant from one timestep to the next. */
 double total_density(const t_param params, t_speed* cells);
 
 /* compute average velocity */
-double av_velocity(const t_param params, t_speed* cells, int* obstacles);
+double av_velocity(const t_param params, t_speed* cells, int* obstacles, t_ocl ocl);
 
 /* calculate Reynolds number */
-double calc_reynolds(const t_param params, t_speed* cells, int* obstacles);
+double calc_reynolds(const t_param params, t_speed* cells, int* obstacles, t_ocl ocl);
 
 /* utility functions */
 void checkError(cl_int err, const char *op, const int line);
@@ -136,6 +145,7 @@ int main(int argc, char* argv[])
   char*    paramfile = NULL;    /* name of the input parameter file */
   char*    obstaclefile = NULL; /* name of a the input obstacle file */
   t_param  params;              /* struct to hold parameter values */
+  t_ocl    ocl;                 /* struct to hold OpenCL objects */
   t_speed* cells     = NULL;    /* grid containing fluid densities */
   t_speed* tmp_cells = NULL;    /* scratch space */
   int*     obstacles = NULL;    /* grid indicating which cells are blocked */
@@ -158,7 +168,7 @@ int main(int argc, char* argv[])
   }
 
   /* initialise our data structures and load values from file */
-  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
+  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels, &ocl);
 
   /* iterate for maxIters timesteps */
   gettimeofday(&timstr, NULL);
@@ -166,8 +176,8 @@ int main(int argc, char* argv[])
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles);
-    av_vels[tt] = av_velocity(params, cells, obstacles);
+    timestep(params, cells, tmp_cells, obstacles, ocl);
+    av_vels[tt] = av_velocity(params, cells, obstacles, ocl);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -185,26 +195,26 @@ int main(int argc, char* argv[])
 
   /* write final values and free memory */
   printf("==done==\n");
-  printf("Reynolds number:\t\t%.12E\n", calc_reynolds(params, cells, obstacles));
+  printf("Reynolds number:\t\t%.12E\n", calc_reynolds(params, cells, obstacles, ocl));
   printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
   printf("Elapsed user CPU time:\t\t%.6lf (s)\n", usrtim);
   printf("Elapsed system CPU time:\t%.6lf (s)\n", systim);
   write_values(params, cells, obstacles, av_vels);
-  finalise(&params, &cells, &tmp_cells, &obstacles, &av_vels);
+  finalise(&params, &cells, &tmp_cells, &obstacles, &av_vels, ocl);
 
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_ocl ocl)
 {
-  accelerate_flow(params, cells, obstacles);
-  propagate(params, cells, tmp_cells);
-  rebound(params, cells, tmp_cells, obstacles);
-  collision(params, cells, tmp_cells, obstacles);
+  accelerate_flow(params, cells, obstacles, ocl);
+  propagate(params, cells, tmp_cells, ocl);
+  rebound(params, cells, tmp_cells, obstacles, ocl);
+  collision(params, cells, tmp_cells, obstacles, ocl);
   return EXIT_SUCCESS;
 }
 
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
+int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, t_ocl ocl)
 {
   /* compute weighting factors */
   double w1 = params.density * params.accel / 9.0;
@@ -236,7 +246,7 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
   return EXIT_SUCCESS;
 }
 
-int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
+int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells, t_ocl ocl)
 {
   /* loop over _all_ cells */
   for (int ii = 0; ii < params.ny; ii++)
@@ -267,7 +277,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
   return EXIT_SUCCESS;
 }
 
-int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
+int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_ocl ocl)
 {
   /* loop over the cells in the grid */
   for (int ii = 0; ii < params.ny; ii++)
@@ -294,7 +304,7 @@ int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obsta
   return EXIT_SUCCESS;
 }
 
-int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
+int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, t_ocl ocl)
 {
   const double c_sq = 1.0 / 3.0; /* square of speed of sound */
   const double w0 = 4.0 / 9.0;  /* weighting factor */
@@ -397,7 +407,7 @@ int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obs
   return EXIT_SUCCESS;
 }
 
-double av_velocity(const t_param params, t_speed* cells, int* obstacles)
+double av_velocity(const t_param params, t_speed* cells, int* obstacles, t_ocl ocl)
 {
   int    tot_cells = 0;  /* no. of cells used in calculation */
   double tot_u;          /* accumulated magnitudes of velocity for each cell */
@@ -450,13 +460,15 @@ double av_velocity(const t_param params, t_speed* cells, int* obstacles)
 
 int initialise(const char* paramfile, const char* obstaclefile,
                t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-               int** obstacles_ptr, double** av_vels_ptr)
+               int** obstacles_ptr, double** av_vels_ptr, t_ocl *ocl)
 {
   char   message[1024];  /* message buffer */
   FILE*   fp;            /* file pointer */
   int    xx, yy;         /* generic array indices */
   int    blocked;        /* indicates whether a cell is blocked by an obstacle */
   int    retval;         /* to hold return value for checking */
+  char*  ocl_src;        /* OpenCL kernel source */
+  long   ocl_size;       /* size of OpenCL kernel source */
 
   /* open the parameter file */
   fp = fopen(paramfile, "r");
@@ -600,11 +612,59 @@ int initialise(const char* paramfile, const char* obstaclefile,
   */
   *av_vels_ptr = (double*)malloc(sizeof(double) * params->maxIters);
 
+
+  cl_int err;
+
+  ocl->device = selectOpenCLDevice();
+
+  // Create OpenCL context
+  ocl->context = clCreateContext(NULL, 1, &ocl->device, NULL, NULL, &err);
+  checkError(err, "creating context", __LINE__);
+
+  fp = fopen(OCLFILE, "r");
+  if (fp == NULL)
+  {
+    sprintf(message, "could not open OpenCL kernel file: %s", OCLFILE);
+    die(message, __LINE__, __FILE__);
+  }
+
+  // Load OpenCL kernel source
+  fseek(fp, 0, SEEK_END);
+  ocl_size = ftell(fp) + 1;
+  ocl_src = (char*)malloc(ocl_size);
+  memset(ocl_src, 0, ocl_size);
+  fseek(fp, 0, SEEK_SET);
+  fread(ocl_src, 1, ocl_size, fp);
+  fclose(fp);
+
+  // Create OpenCL program
+  ocl->program = clCreateProgramWithSource(
+    ocl->context, 1, (const char**)&ocl_src, NULL, &err);
+  free(ocl_src);
+  checkError(err, "creating program", __LINE__);
+
+  // Build OpenCL program
+  err = clBuildProgram(ocl->program, 1, &ocl->device, "", NULL, NULL);
+  if (err == CL_BUILD_PROGRAM_FAILURE)
+  {
+    size_t sz;
+    clGetProgramBuildInfo(
+      ocl->program, ocl->device,
+      CL_PROGRAM_BUILD_LOG, 0, NULL, &sz);
+    char *buildlog = malloc(sz);
+    clGetProgramBuildInfo(
+      ocl->program, ocl->device,
+      CL_PROGRAM_BUILD_LOG, sz, buildlog, NULL);
+    fprintf(stderr, "\nOpenCL build log:\n\n%s\n", buildlog);
+    free(buildlog);
+  }
+  checkError(err, "building program", __LINE__);
+
   return EXIT_SUCCESS;
 }
 
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
-             int** obstacles_ptr, double** av_vels_ptr)
+             int** obstacles_ptr, double** av_vels_ptr, t_ocl ocl)
 {
   /*
   ** free up allocated memory
@@ -621,15 +681,18 @@ int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr
   free(*av_vels_ptr);
   *av_vels_ptr = NULL;
 
+  clReleaseProgram(ocl.program);
+  clReleaseContext(ocl.context);
+
   return EXIT_SUCCESS;
 }
 
 
-double calc_reynolds(const t_param params, t_speed* cells, int* obstacles)
+double calc_reynolds(const t_param params, t_speed* cells, int* obstacles, t_ocl ocl)
 {
   const double viscosity = 1.0 / 6.0 * (2.0 / params.omega - 1.0);
 
-  return av_velocity(params, cells, obstacles) * params.reynolds_dim / viscosity;
+  return av_velocity(params, cells, obstacles, ocl) * params.reynolds_dim / viscosity;
 }
 
 double total_density(const t_param params, t_speed* cells)
