@@ -53,8 +53,15 @@
 #include<stdlib.h>
 #include<math.h>
 #include<time.h>
+#include<string.h>
 #include<sys/time.h>
 #include<sys/resource.h>
+
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
+#include <CL/opencl.h>
+#endif
 
 #define NSPEEDS         9
 #define FINALSTATEFILE  "final_state.dat"
@@ -114,8 +121,11 @@ double av_velocity(const t_param params, t_speed* cells, int* obstacles);
 double calc_reynolds(const t_param params, t_speed* cells, int* obstacles);
 
 /* utility functions */
+void checkError(cl_int err, const char *op, const int line);
 void die(const char* message, const int line, const char* file);
 void usage(const char* exe);
+
+cl_device_id selectOpenCLDevice();
 
 /*
 ** main program:
@@ -723,6 +733,16 @@ int write_values(const t_param params, t_speed* cells, int* obstacles, double* a
   return EXIT_SUCCESS;
 }
 
+void checkError(cl_int err, const char *op, const int line)
+{
+  if (err != CL_SUCCESS)
+  {
+    fprintf(stderr, "OpenCL error during '%s' on line %d: %d\n", op, line, err);
+    fflush(stderr);
+    exit(EXIT_FAILURE);
+  }
+}
+
 void die(const char* message, const int line, const char* file)
 {
   fprintf(stderr, "Error at line %d of file %s:\n", line, file);
@@ -737,3 +757,64 @@ void usage(const char* exe)
   exit(EXIT_FAILURE);
 }
 
+#define MAX_DEVICES 32
+#define MAX_DEVICE_NAME 1024
+
+cl_device_id selectOpenCLDevice()
+{
+  cl_int err;
+  cl_uint num_platforms = 0;
+  cl_uint total_devices = 0;
+  cl_platform_id platforms[8];
+  cl_device_id devices[MAX_DEVICES];
+  char name[MAX_DEVICE_NAME];
+
+  // Get list of platforms
+  err = clGetPlatformIDs(8, platforms, &num_platforms);
+  checkError(err, "getting platforms", __LINE__);
+
+  // Get list of devices
+  for (cl_uint p = 0; p < num_platforms; p++)
+  {
+    cl_uint num_devices = 0;
+    err = clGetDeviceIDs(platforms[p], CL_DEVICE_TYPE_ALL,
+                         MAX_DEVICES-total_devices, devices+total_devices,
+                         &num_devices);
+    checkError(err, "getting device name", __LINE__);
+    total_devices += num_devices;
+  }
+
+  // Print list of devices
+  printf("\nAvailable OpenCL devices:\n");
+  for (cl_uint d = 0; d < total_devices; d++)
+  {
+    clGetDeviceInfo(devices[d], CL_DEVICE_NAME, MAX_DEVICE_NAME, name, NULL);
+    printf("%2d: %s\n", d, name);
+  }
+  printf("\n");
+
+  // TODO: Pick device properly on BCP3
+  cl_uint device_index = 0;
+  char *dev_env = getenv("OCL_DEVICE");
+  if (dev_env)
+  {
+    char *end;
+    device_index = strtol(dev_env, &end, 10);
+    if (strlen(end))
+      die("invalid OCL_DEVICE variable", __LINE__, __FILE__);
+  }
+
+  if (device_index >= total_devices)
+  {
+    fprintf(stderr, "device index set to %d but only %d devices available\n",
+            device_index, total_devices);
+    exit(1);
+  }
+
+  // Print OpenCL device name
+  clGetDeviceInfo(devices[device_index], CL_DEVICE_NAME,
+                  MAX_DEVICE_NAME, name, NULL);
+  printf("Selected OpenCL device:\n-> %s\n\n", name);
+
+  return devices[device_index];
+}
