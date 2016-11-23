@@ -83,9 +83,11 @@ typedef struct
 /* struct to hold OpenCL objects */
 typedef struct
 {
-  cl_device_id device;
-  cl_context   context;
-  cl_program   program;
+  cl_device_id      device;
+  cl_context        context;
+  cl_command_queue  queue;
+
+  cl_program program;
 
   cl_mem cells;
   cl_mem tmp_cells;
@@ -632,6 +634,10 @@ int initialise(const char* paramfile, const char* obstaclefile,
     die(message, __LINE__, __FILE__);
   }
 
+  // Create OpenCL command queue
+  ocl->queue = clCreateCommandQueue(ocl->context, ocl->device, 0, &err);
+  checkError(err, "creating command queue", __LINE__);
+
   // Load OpenCL kernel source
   fseek(fp, 0, SEEK_END);
   ocl_size = ftell(fp) + 1;
@@ -703,6 +709,7 @@ int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr
   clReleaseMemObject(ocl.tmp_cells);
   clReleaseMemObject(ocl.obstacles);
   clReleaseProgram(ocl.program);
+  clReleaseCommandQueue(ocl.queue);
   clReleaseContext(ocl.context);
 
   return EXIT_SUCCESS;
