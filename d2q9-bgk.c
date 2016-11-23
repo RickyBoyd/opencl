@@ -919,7 +919,7 @@ cl_device_id selectOpenCLDevice()
   }
   printf("\n");
 
-  // TODO: Pick device properly on BCP3
+  // Use first device unless OCL_DEVICE environment variable used
   cl_uint device_index = 0;
   char *dev_env = getenv("OCL_DEVICE");
   if (dev_env)
@@ -940,7 +940,7 @@ cl_device_id selectOpenCLDevice()
   // Print OpenCL device name
   clGetDeviceInfo(devices[device_index], CL_DEVICE_NAME,
                   MAX_DEVICE_NAME, name, NULL);
-  printf("Selected OpenCL device:\n-> %s\n\n", name);
+  printf("Selected OpenCL device:\n-> %s (index=%d)\n\n", name, device_index);
 
   return devices[device_index];
 }
