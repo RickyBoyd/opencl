@@ -86,6 +86,10 @@ typedef struct
   cl_device_id device;
   cl_context   context;
   cl_program   program;
+
+  cl_mem cells;
+  cl_mem tmp_cells;
+  cl_mem obstacles;
 } t_ocl;
 
 /* struct to hold the 'speed' values */
@@ -660,6 +664,20 @@ int initialise(const char* paramfile, const char* obstaclefile,
   }
   checkError(err, "building program", __LINE__);
 
+  // Allocate buffers
+  ocl->cells = clCreateBuffer(
+    ocl->context, CL_MEM_READ_WRITE,
+    sizeof(t_speed) * params->nx * params->nx, NULL, &err);
+  checkError(err, "creating cells buffer", __LINE__);
+  ocl->tmp_cells = clCreateBuffer(
+    ocl->context, CL_MEM_READ_WRITE,
+    sizeof(t_speed) * params->nx * params->nx, NULL, &err);
+  checkError(err, "creating tmp_cells buffer", __LINE__);
+  ocl->obstacles = clCreateBuffer(
+    ocl->context, CL_MEM_READ_WRITE,
+    sizeof(cl_int) * params->nx * params->nx, NULL, &err);
+  checkError(err, "creating obstacles buffer", __LINE__);
+
   return EXIT_SUCCESS;
 }
 
@@ -681,6 +699,9 @@ int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr
   free(*av_vels_ptr);
   *av_vels_ptr = NULL;
 
+  clReleaseMemObject(ocl.cells);
+  clReleaseMemObject(ocl.tmp_cells);
+  clReleaseMemObject(ocl.obstacles);
   clReleaseProgram(ocl.program);
   clReleaseContext(ocl.context);
 
