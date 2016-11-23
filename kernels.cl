@@ -8,7 +8,6 @@ typedef struct
 } t_speed;
 
 kernel void accelerate_flow(global t_speed* cells,
-                            global t_speed* tmp_cells,
                             global int* obstacles,
                             int nx, int ny,
                             double density, double accel)
