@@ -4,17 +4,17 @@
 
 typedef struct
 {
-  double speeds[NSPEEDS];
+  float speeds[NSPEEDS];
 } t_speed;
 
 kernel void accelerate_flow(global t_speed* cells,
                             global int* obstacles,
                             int nx, int ny,
-                            double density, double accel)
+                            float density, float accel)
 {
   /* compute weighting factors */
-  double w1 = density * accel / 9.0;
-  double w2 = density * accel / 36.0;
+  float w1 = density * accel / 9.0;
+  float w2 = density * accel / 36.0;
 
   /* modify the 2nd row of the grid */
   int ii = ny - 2;

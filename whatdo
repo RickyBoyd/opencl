@@ -1,0 +1,3 @@
+1. Change to floats  2x speedup
+2. optimise collision
+3. obstacles int to char
