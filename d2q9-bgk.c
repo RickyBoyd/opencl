@@ -231,10 +231,10 @@ int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacle
   cl_int err;
 
   // Write cells to device
-  err = clEnqueueWriteBuffer(
-    ocl.queue, ocl.cells, CL_TRUE, 0,
-    sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
-  checkError(err, "writing cells data", __LINE__);
+  // err = clEnqueueWriteBuffer(
+  //   ocl.queue, ocl.cells, CL_TRUE, 0,
+  //   sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
+  // checkError(err, "writing cells data", __LINE__);
 
   accelerate_flow(params, cells, obstacles, ocl);
   propagate(params, cells, tmp_cells, ocl);
