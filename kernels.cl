@@ -6,8 +6,8 @@
 
 
 void reduce(                                          
-   local  float*    local_sums,                          
-   global float*    partial_sums,
+    local  float*    local_sums,                          
+    global float*    partial_sums,
     int timestep)                        
 {                                                          
    int num_wrk_items_x  = get_local_size(0);
@@ -31,10 +31,10 @@ void reduce(
    
       for (ii=0; ii<num_wrk_items_y; ii++) {
           for(jj=0; jj < num_wrk_items_x; jj++){
-              sum += local_sums[ii * num_wrk_items_x + jj];   
+              sum += local_sums[ii * num_wrk_items_x + jj];
           }           
       }                                     
-      partial_sums[timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = sum;         
+      partial_sums[ timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = sum;         
    }
 }
 
@@ -255,7 +255,7 @@ kernel void rebound(global float* cells,
                        + tmp8))
                    / local_density;
       /* accumulate the norm of x- and y- velocity components */
-      tot_u = (double)((u_x * u_x) + (u_y * u_y));
+      tot_u = (float)sqrt((double)((u_x * u_x) + (u_y * u_y)));
 
       int num_wrk_items_x  = get_local_size(0);
       //int num_wrk_items_y  = get_local_size(1);

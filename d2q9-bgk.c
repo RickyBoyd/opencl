@@ -191,11 +191,11 @@ int main(int argc, char* argv[])
   err = clGetKernelWorkGroupInfo (ocl.rebound, ocl.device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &work_group_size, NULL);
     checkError(err, "Getting kernel work group info", __LINE__);
 
-  printf("1: %zu\n", work_group_size);
+  printf("max work group size: %zu\n", work_group_size);
   work_group_size = 16*16;
-  size_t nwork_groups = params.nx * params.ny / work_group_size;
+  int nwork_groups = params.nx * params.ny / work_group_size;
 
-  printf("Work group size: %zu\nNumber of work groups per timestep: %zu \n", work_group_size, nwork_groups);
+  printf("Work group size: %zu\nNumber of work groups per timestep: %d \n", work_group_size, nwork_groups);
 
 
   ocl.partial_sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(float) * nwork_groups * params.maxIters, NULL, &err);
@@ -522,10 +522,11 @@ float av_velocity(const t_param params, float* cells, int* obstacles, int tot_ce
 }
 
 int sum_partial_sums(const t_param params, float *partial_sums, float *av_vels, size_t nwork_groups, int tot_cells){
+
   for(int tt = 0; tt < params.maxIters; tt++){
     float sum = 0.0f;
     for(int w = 0; w < nwork_groups; w++){
-      sum += (float)sqrt((double)partial_sums[tt*nwork_groups + w]);
+      sum += partial_sums[tt*nwork_groups + w];
     }
     av_vels[tt] = sum/(float)tot_cells;
   }
