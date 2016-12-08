@@ -8,7 +8,6 @@
 void reduce(                                          
    local  float*    local_sums,                          
    global float*    partial_sums,
-    size_t nwork_groups,
     int timestep)                        
 {                                                          
    int num_wrk_items_x  = get_local_size(0);
@@ -268,7 +267,7 @@ kernel void rebound(global float* cells,
 
       barrier(CLK_LOCAL_MEM_FENCE);
    
-      reduce(local_sums, partial_sums, nwork_groups, timestep);  
+      reduce(local_sums, partial_sums, timestep);  
   }
 }
 
