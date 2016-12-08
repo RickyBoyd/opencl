@@ -361,7 +361,7 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
 
   // Wait for kernel to finish
   err = clFinish(ocl.queue);
-  checkError(err, "waiting for propagate kernel", __LINE__);
+  checkError(err, "waiting for rebound kernel", __LINE__);
 
 
   return EXIT_SUCCESS;

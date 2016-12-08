@@ -8,6 +8,7 @@
 void reduce(                                          
     local  float*    local_sums,                          
     global float*    partial_sums,
+
     int timestep)                        
 {                                                          
    int num_wrk_items_x  = get_local_size(0);
@@ -19,8 +20,8 @@ void reduce(
    int group_id_jj       = get_group_id(0);
    int group_id_ii       = get_group_id(1);
 
-   size_t global_size_x  = get_local_size(0);
-   size_t global_size_y  = get_local_size(1);  
+   size_t global_size_x  = get_num_groups(0);
+   size_t global_size_y  = get_num_groups(1);  
 
    float sum;                              
    int ii;
