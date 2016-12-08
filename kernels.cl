@@ -107,7 +107,7 @@ kernel void rebound(global float* cells,
                       local  float*    local_sums,                          
                       global float*    partial_sums,
                       int nx, int ny, float omega,
-                      size_t nwork_groups, int timestep)
+                      int timestep)
 {
   int jj = get_global_id(0);
   int ii = get_global_id(1);

@@ -349,10 +349,8 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
   checkError(err, "setting rebound ag 6", __LINE__);
   err = clSetKernelArg(ocl.rebound, 7, sizeof(cl_int), &params.omega);
   checkError(err, "setting rebound arg 7", __LINE__);
-  err = clSetKernelArg(ocl.rebound, 8, sizeof(cl_uint), &nwork_groups);
+  err = clSetKernelArg(ocl.rebound, 8, sizeof(cl_int), &tt);
   checkError(err, "setting rebound arg 8", __LINE__);
-  err = clSetKernelArg(ocl.rebound, 9, sizeof(cl_int), &tt);
-  checkError(err, "setting rebound arg 9", __LINE__);
 
   // Enqueue kernel
   size_t global[2] = {params.nx, params.ny};
