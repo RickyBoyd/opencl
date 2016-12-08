@@ -1,3 +1,5 @@
 1. Change to floats  2x speedup
 2. optimise collision
-3. obstacles int to char
+3. kernelise collision and rebound
+4. structure of arrays
+5. kernelise av_velocity with reduction taken from handon OpenCl ex7

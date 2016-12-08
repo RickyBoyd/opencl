@@ -4,6 +4,41 @@
 
 #define MEM(ii, jj, kk, nx, ny) ( ( (nx) * (ny) * (kk) ) + ( (ii) * (nx) ) + (jj))
 
+
+void reduce(                                          
+   local  float*    local_sums,                          
+   global float*    partial_sums,
+    size_t nwork_groups,
+    int timestep)                        
+{                                                          
+   int num_wrk_items_x  = get_local_size(0);
+   int num_wrk_items_y  = get_local_size(1);
+
+   int local_id_jj      = get_local_id(0);
+   int local_id_ii      = get_local_id(1);  
+
+   int group_id_jj       = get_group_id(0);
+   int group_id_ii       = get_group_id(1);
+
+   size_t global_size_x  = get_local_size(0);
+   size_t global_size_y  = get_local_size(1);  
+
+   float sum;                              
+   int ii;
+   int jj;                                      
+   
+   if (local_id_ii == 0 && local_id_jj == 0) {                      
+      sum = 0.0f;                            
+   
+      for (ii=0; ii<num_wrk_items_y; ii++) {
+          for(jj=0; jj < num_wrk_items_x; jj++){
+              sum += local_sums[ii * num_wrk_items_x + jj];   
+          }           
+      }                                     
+      partial_sums[timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = sum;         
+   }
+}
+
 kernel void accelerate_flow(global float* cells,
                             global int* obstacles,
                             int nx, int ny,
@@ -69,7 +104,10 @@ kernel void propagate(global float* cells,
 kernel void rebound(global float* cells,
                       global float* tmp_cells,
                       global int* obstacles,
-                      int nx, int ny, float omega)
+                      local  float*    local_sums,                          
+                      global float*    partial_sums,
+                      int nx, int ny, float omega,
+                      size_t nwork_groups, int timestep)
 {
   int jj = get_global_id(0);
   int ii = get_global_id(1);
@@ -86,6 +124,8 @@ kernel void rebound(global float* cells,
     cells[MEM(ii, jj, 6, nx, ny)] = tmp_cells[MEM(ii, jj, 8, nx, ny)];
     cells[MEM(ii, jj, 7, nx, ny)] = tmp_cells[MEM(ii, jj, 5, nx, ny)];
     cells[MEM(ii, jj, 8, nx, ny)] = tmp_cells[MEM(ii, jj, 6, nx, ny)];
+    barrier(CLK_LOCAL_MEM_FENCE);
+
   } else {
     const float c_sq = 1.0f / 3.0f; /* square of speed of sound */
     const float w0 = 4.0f / 9.0f;  /* weighting factor */
@@ -177,6 +217,182 @@ kernel void rebound(global float* cells,
         cells[MEM(ii, jj, 6, nx, ny)] = tmp6 + omega * (d_equ[6] - tmp6);
         cells[MEM(ii, jj, 7, nx, ny)] = tmp7 + omega * (d_equ[7] - tmp7);
         cells[MEM(ii, jj, 8, nx, ny)] = tmp8 + omega * (d_equ[8] - tmp8);
-        
+
+      float tot_u = 0.0f;          /* accumulated magnitudes of velocity for each cell */
+          /* local density total */
+      local_density = 0.0f;
+      tmp0 = cells[MEM(ii, jj, 0, nx, ny)];
+      tmp1 = cells[MEM(ii, jj, 1, nx, ny)];
+      tmp2 = cells[MEM(ii, jj, 2, nx, ny)];
+      tmp3 = cells[MEM(ii, jj, 3, nx, ny)];
+      tmp4 = cells[MEM(ii, jj, 4, nx, ny)];
+      tmp5 = cells[MEM(ii, jj, 5, nx, ny)];
+      tmp6 = cells[MEM(ii, jj, 6, nx, ny)];
+      tmp7 = cells[MEM(ii, jj, 7, nx, ny)];
+      tmp8 = cells[MEM(ii, jj, 8, nx, ny)];
+      local_density += tmp0;
+      local_density += tmp1;
+      local_density += tmp2;
+      local_density += tmp3;
+      local_density += tmp4;
+      local_density += tmp5;
+      local_density += tmp6;
+      local_density += tmp7;
+      local_density += tmp8;
+      /* compute x velocity component */
+      u_x = (tmp1
+                    + tmp5
+                    + tmp8
+                    - (tmp3
+                       + tmp6
+                       + tmp7))
+                   / local_density;
+      /* compute y velocity component */
+      u_y = (tmp2
+                    + tmp5
+                    + tmp6
+                    - (tmp4
+                       + tmp7
+                       + tmp8))
+                   / local_density;
+      /* accumulate the norm of x- and y- velocity components */
+      tot_u = (double)((u_x * u_x) + (u_y * u_y));
+
+      int num_wrk_items_x  = get_local_size(0);
+      //int num_wrk_items_y  = get_local_size(1);
+
+      int local_id_jj      = get_local_id(0);
+      int local_id_ii      = get_local_id(1);  
+      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = tot_u;
+
+
+      barrier(CLK_LOCAL_MEM_FENCE);
+   
+      reduce(local_sums, partial_sums, nwork_groups, timestep);  
   }
 }
+
+
+
+
+// __kernel
+// void reduce(
+//             __global float* buffer,
+//             __local float* scratch,
+//             __const int length,
+//             __global float* result) {
+
+//   int global_index = get_global_id(0);
+//   int local_index = get_local_id(0);
+//   // Load data into local memory
+//   if (global_index < length) {
+//     scratch[local_index] = buffer[global_index];
+//   } else {
+//     // 0 is the identity element for the add operation
+//     scratch[local_index] = 0;
+//   }
+//   barrier(CLK_LOCAL_MEM_FENCE);
+//   for(int offset = get_local_size(0) / 2; offset > 0; offset >>= 1) {
+//   if (local_index < offset) {
+//     float other = scratch[local_index + offset];
+//     float mine = scratch[local_index];
+//     scratch[local_index] = (mine + other);
+//   }
+//   barrier(CLK_LOCAL_MEM_FENCE);
+// }
+//   if (local_index == 0) {
+//     result[get_group_id(0)] = scratch[0];
+//   }
+// }
+
+// __kernel
+// void reduce(__global float* buffer,
+//             __local float* scratch,
+//             __const int length,
+//             __global float* result) {
+
+//   int global_index = get_global_id(0);
+
+
+//   float accumulator = INFINITY;
+//   // Loop sequentially over chunks of input vector
+//   while (global_index < length) {
+//     float element = buffer[global_index];
+//     accumulator = accumulator + element;
+//     global_index += get_global_size(0);
+//   }
+
+//   // Perform parallel reduction
+//   int local_index = get_local_id(0);
+//   scratch[local_index] = accumulator;
+//   barrier(CLK_LOCAL_MEM_FENCE);
+//   for(int offset = get_local_size(0) / 2; offset > 0; offset = offset / 2) {
+//     if (local_index < offset) {
+//       float other = scratch[local_index + offset];
+//       float mine = scratch[local_index];
+//       scratch[local_index] = mine + other;
+//     }
+//     barrier(CLK_LOCAL_MEM_FENCE);
+//   }
+//   if (local_index == 0) {
+//     result[get_group_id(0)] = scratch[0];
+//   }
+// }
+
+
+// float av_velocity(global float* cells,
+//                   global int* obstacles,
+//                   global float* tmp_cells,
+//                   int nx, int ny)
+// {
+//   float tot_u = 0.0f;          /* accumulated magnitudes of velocity for each cell */
+
+//   int jj = get_global_id(0);
+//   int ii = get_global_id(1);
+
+//       /* ignore occupied cells */
+//   if (!obstacles[ii * params.nx + jj])
+//   {
+//         /* local density total */
+//     float local_density = 0.0f;
+//     float tmp0 = cells[MEM(ii, jj, 0, nx, ny)];
+//     float tmp1 = cells[MEM(ii, jj, 1, nx, ny)];
+//     float tmp2 = cells[MEM(ii, jj, 2, nx, ny)];
+//     float tmp3 = cells[MEM(ii, jj, 3, nx, ny)];
+//     float tmp4 = cells[MEM(ii, jj, 4, nx, ny)];
+//     float tmp5 = cells[MEM(ii, jj, 5, nx, ny)];
+//     float tmp6 = cells[MEM(ii, jj, 6, nx, ny)];
+//     float tmp7 = cells[MEM(ii, jj, 7, nx, ny)];
+//     float tmp8 = cells[MEM(ii, jj, 8, nx, ny)];
+//     local_density += tmp0;
+//     local_density += tmp1;
+//     local_density += tmp2;
+//     local_density += tmp3;
+//     local_density += tmp4;
+//     local_density += tmp5;
+//     local_density += tmp6;
+//     local_density += tmp7;
+//     local_density += tmp8;
+//     /* compute x velocity component */
+//     float u_x = (tmp1
+//                   + tmp5
+//                   + tmp8
+//                   - (tmp3
+//                      + tmp6
+//                      + tmp7))
+//                  / local_density;
+//     /* compute y velocity component */
+//     float u_y = (tmp2
+//                   + tmp5
+//                   + tmp6
+//                   - (tmp4
+//                      + tmp7
+//                      + tmp8))
+//                  / local_density;
+//     /* accumulate the norm of x- and y- velocity components */
+//     tmp_cells[MEM(ii, jj, 0, nx, ny)] = (float)sqrt((double)((u_x * u_x) + (u_y * u_y)));
+//     /* increase counter of inspected cells */
+//   }
+// }
+
+

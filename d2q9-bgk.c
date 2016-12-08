@@ -98,6 +98,7 @@ typedef struct
   cl_mem cells;
   cl_mem tmp_cells;
   cl_mem obstacles;
+  cl_mem partial_sums;
 } t_ocl;
 
 /* struct to hold the 'speed' values */
@@ -116,13 +117,15 @@ int initialise(const char* paramfile, const char* obstaclefile,
 ** timestep calls, in order, the functions:
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
-int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, t_ocl ocl);
+int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, size_t work_group_size, size_t nwork_groups, int tt, t_ocl ocl);
 int accelerate_flow(const t_param params, float* cells, int* obstacles, t_ocl ocl);
 int propagate(const t_param params, float* cells, float* tmp_cells, t_ocl ocl);
-int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles, t_ocl ocl);
+int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles, size_t work_group_size, size_t nwork_groups, int tt, t_ocl ocl);
 int collision(const t_param params, float* cells, float* tmp_cells, int* obstacles, t_ocl ocl);
 int write_values(const t_param params, float* cells, int* obstacles, float* av_vels);
 
+
+int sum_partial_sums(const t_param params, float *partial_sums, float *av_vels, size_t nwork_groups, int tot_cells);
 /* finalise, including freeing up allocated memory */
 int finalise(const t_param* params, float** cells_ptr, float** tmp_cells_ptr,
              int** obstacles_ptr, float** av_vels_ptr, t_ocl ocl);
@@ -165,6 +168,8 @@ int main(int argc, char* argv[])
   double usrtim;                /* floating point number to record elapsed user CPU time */
   double systim;                /* floating point number to record elapsed system CPU time */
 
+  size_t work_group_size;
+
   /* parse the command line */
   if (argc != 3)
   {
@@ -183,11 +188,20 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  // Write cells to OpenCL buffer
-  err = clEnqueueWriteBuffer(
-    ocl.queue, ocl.cells, CL_TRUE, 0,
-    sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
-  checkError(err, "writing cells data", __LINE__);
+  err = clGetKernelWorkGroupInfo (ocl.rebound, ocl.device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &work_group_size, NULL);
+    checkError(err, "Getting kernel work group info", __LINE__);
+
+  printf("1: %zu\n", work_group_size);
+  work_group_size = 16*16;
+  size_t nwork_groups = params.nx * params.ny / work_group_size;
+
+  printf("Work group size: %zu\nNumber of work groups per timestep: %zu \n", work_group_size, nwork_groups);
+
+
+  ocl.partial_sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(float) * nwork_groups * params.maxIters, NULL, &err);
+    checkError(err, "Creating buffer d_partial_sums", __LINE__);
+  checkError(err, "creating partial_sums buffer", __LINE__);
+
 
   // Write obstacles to OpenCL buffer
   err = clEnqueueWriteBuffer(
@@ -195,16 +209,34 @@ int main(int argc, char* argv[])
     sizeof(cl_int) * params.nx * params.ny, obstacles, 0, NULL, NULL);
   checkError(err, "writing obstacles data", __LINE__);
 
+  err = clEnqueueWriteBuffer(
+    ocl.queue, ocl.cells, CL_TRUE, 0,
+    sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
+  checkError(err, "writing cells data", __LINE__);
+
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles, ocl);
-    av_vels[tt] = av_velocity(params, cells, obstacles, tot_cells, ocl);
+    timestep(params, cells, tmp_cells, obstacles, work_group_size, nwork_groups, tt, ocl);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
     printf("tot density: %.12E\n", total_density(params, cells));
 #endif
   }
+
+  err = clEnqueueReadBuffer(
+    ocl.queue, ocl.cells, CL_TRUE, 0,
+    sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
+  checkError(err, "reading cells data", __LINE__);
+
+  float *final_partial_sums = malloc(sizeof(float) * nwork_groups * params.maxIters);
+
+  err = clEnqueueReadBuffer(
+    ocl.queue, ocl.partial_sums, CL_TRUE, 0,
+    sizeof(float) * nwork_groups * params.maxIters, final_partial_sums, 0, NULL, NULL);
+  checkError(err, "reading cells data", __LINE__);
+
+  sum_partial_sums(params, final_partial_sums, av_vels, nwork_groups, tot_cells);
 
   gettimeofday(&timstr, NULL);
   toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -226,34 +258,12 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, t_ocl ocl)
+int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacles, size_t work_group_size, size_t nwork_groups, int tt, t_ocl ocl)
 {
-  cl_int err;
-
-  // Write cells to device
-  // err = clEnqueueWriteBuffer(
-  //   ocl.queue, ocl.cells, CL_TRUE, 0,
-  //   sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
-  // checkError(err, "writing cells data", __LINE__);
 
   accelerate_flow(params, cells, obstacles, ocl);
   propagate(params, cells, tmp_cells, ocl);
-  rebound(params, cells, tmp_cells, obstacles, ocl);
-
-  // // Read tmp_cells from device
-  // err = clEnqueueReadBuffer(
-  //   ocl.queue, ocl.tmp_cells, CL_TRUE, 0,
-  //   sizeof(flaot) * NSPEEDS * params.nx * params.ny, tmp_cells, 0, NULL, NULL);
-  // checkError(err, "reading tmp_cells data", __LINE__);
-
-  err = clEnqueueReadBuffer(
-    ocl.queue, ocl.cells, CL_TRUE, 0,
-    sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
-  checkError(err, "reading cells data", __LINE__);
-
-
-  
-  //collision(params, cells, tmp_cells, obstacles, ocl);
+  rebound(params, cells, tmp_cells, obstacles, work_group_size, nwork_groups, tt, ocl);
   return EXIT_SUCCESS;
 }
 
@@ -317,12 +327,11 @@ int propagate(const t_param params, float* cells, float* tmp_cells, t_ocl ocl)
   return EXIT_SUCCESS;
 }
 
-int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles, t_ocl ocl)
+int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles, size_t work_group_size, size_t nwork_groups, int tt, t_ocl ocl)
 {
   /* loop over the cells in the grid */
 
   cl_int err;
-
   // Set kernel arguments
   err = clSetKernelArg(ocl.rebound, 0, sizeof(cl_mem), &ocl.cells);
   checkError(err, "setting rebound arg 0", __LINE__);
@@ -330,17 +339,26 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
   checkError(err, "setting rebound arg 1", __LINE__);
   err = clSetKernelArg(ocl.rebound, 2, sizeof(cl_mem), &ocl.obstacles);
   checkError(err, "setting rebound arg 2", __LINE__);
-  err = clSetKernelArg(ocl.rebound, 3, sizeof(cl_int), &params.nx);
+  err |= clSetKernelArg(ocl.rebound, 3, sizeof(float) * work_group_size, NULL);
   checkError(err, "setting rebound arg 3", __LINE__);
-  err = clSetKernelArg(ocl.rebound, 4, sizeof(cl_int), &params.ny);
+  err |= clSetKernelArg(ocl.rebound, 4, sizeof(cl_mem), &ocl.partial_sums);
   checkError(err, "setting rebound arg 4", __LINE__);
-  err = clSetKernelArg(ocl.rebound, 5, sizeof(cl_int), &params.omega);
+  err = clSetKernelArg(ocl.rebound, 5, sizeof(cl_int), &params.nx);
   checkError(err, "setting rebound arg 5", __LINE__);
+  err = clSetKernelArg(ocl.rebound, 6, sizeof(cl_int), &params.ny);
+  checkError(err, "setting rebound ag 6", __LINE__);
+  err = clSetKernelArg(ocl.rebound, 7, sizeof(cl_int), &params.omega);
+  checkError(err, "setting rebound arg 7", __LINE__);
+  err = clSetKernelArg(ocl.rebound, 8, sizeof(cl_uint), &nwork_groups);
+  checkError(err, "setting rebound arg 8", __LINE__);
+  err = clSetKernelArg(ocl.rebound, 9, sizeof(cl_int), &tt);
+  checkError(err, "setting rebound arg 9", __LINE__);
 
   // Enqueue kernel
   size_t global[2] = {params.nx, params.ny};
+  size_t local[2]  = {16, 16};
   err = clEnqueueNDRangeKernel(ocl.queue, ocl.rebound,
-                               2, NULL, global, NULL, 0, NULL, NULL);
+                               2, NULL, global, local, 0, NULL, NULL);
   checkError(err, "enqueueing rebound kernel", __LINE__);
 
   // Wait for kernel to finish
@@ -503,6 +521,17 @@ float av_velocity(const t_param params, float* cells, int* obstacles, int tot_ce
     }
   }
   return tot_u / (float)tot_cells;
+}
+
+int sum_partial_sums(const t_param params, float *partial_sums, float *av_vels, size_t nwork_groups, int tot_cells){
+  for(int tt = 0; tt < params.maxIters; tt++){
+    float sum = 0.0f;
+    for(int w = 0; w < nwork_groups; w++){
+      sum += (float)sqrt((double)partial_sums[tt*nwork_groups + w]);
+    }
+    av_vels[tt] = sum/(float)tot_cells;
+  }
+  return EXIT_SUCCESS;
 }
 
 int initialise(const char* paramfile, const char* obstaclefile,
