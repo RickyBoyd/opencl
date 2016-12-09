@@ -193,7 +193,7 @@ int main(int argc, char* argv[])
 
   printf("Work group size: %zu\nNumber of work groups per timestep: %d \n", work_group_size, nwork_groups);
 
-  float *final_partial_sums = calloc(sizeof(float) * nwork_groups * params.maxIters);
+  float *final_partial_sums = calloc(sizeof(float), nwork_groups * params.maxIters);
 
   ocl.partial_sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(float) * nwork_groups * params.maxIters, NULL, &err);
     checkError(err, "Creating buffer d_partial_sums", __LINE__);
