@@ -9,14 +9,14 @@ void reduce(
             global float* partial_sums,
             int timestep) {
 
-   int num_wrk_items_x  = get_local_size(0);
-   int num_wrk_items_y  = get_local_size(1);
+   size_t num_wrk_items_x  = get_local_size(0);
+   size_t num_wrk_items_y  = get_local_size(1);
 
-   int local_id_jj      = get_local_id(0);
-   int local_id_ii      = get_local_id(1);  
+   size_t local_id_jj      = get_local_id(0);
+   size_t local_id_ii      = get_local_id(1);  
 
-   int group_id_jj       = get_group_id(0);
-   int group_id_ii       = get_group_id(1);
+   size_t group_id_jj       = get_group_id(0);
+   size_t group_id_ii       = get_group_id(1);
 
    size_t group_size_x  = get_num_groups(0);
    size_t group_size_y  = get_num_groups(1);  
@@ -26,7 +26,7 @@ void reduce(
 
   // local_sums[local_id_ii * num_wrk_items_x + local_id_jj]
 
-  for(int offset = num_wrk_items_x / 2; 
+  for(size_t offset = num_wrk_items_x / 2; 
       offset > 0;
       offset >>= 1){
 
@@ -42,7 +42,7 @@ void reduce(
 
   // Multistage reduction reduces horzontally into one column of values then reduces the column into (0,0)
   barrier(CLK_LOCAL_MEM_FENCE);
-  for(int offset = num_wrk_items_y / 2; 
+  for(size_t offset = num_wrk_items_y / 2; 
       offset > 0;
       offset >>= 1){
 
