@@ -30,7 +30,7 @@ void reduce(
       offset > 0;
       offset >>= 1){
 
-    if (local_index_ii < offset) {
+    if (local_id_ii < offset) {
 
         float other = local_sums[ (local_id_ii) * num_wrk_items_x + (local_id_jj + offset)];
         float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
