@@ -188,7 +188,6 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  printf("max work group size: %zu\n", work_group_size);
   work_group_size = 32*32;
   int nwork_groups = params.nx * params.ny / work_group_size;
 
