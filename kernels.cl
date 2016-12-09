@@ -5,8 +5,8 @@
 #define MEM(ii, jj, kk, nx, ny) ( ( (nx) * (ny) * (kk) ) + ( (ii) * (nx) ) + (jj))
 
 void reduce(
-            __local float* local_sums,
-            __global float* partial_sums,
+            local float* local_sums,
+            global float* partial_sums,
             int timestep) {
 
    int num_wrk_items_x  = get_local_size(0);
@@ -26,24 +26,21 @@ void reduce(
 
   // local_sums[local_id_ii * num_wrk_items_x + local_id_jj]
 
-  for(int offset_ii = num_wrk_items_y / 2; 
+  for(int offset = num_wrk_items_y / 2; 
       offset_ii > 0;
       offset_ii >>= 1){
-    for(int offset_jj = num_wrk_items_x / 2;
-        offset_jj > 0;
-        offset_jj >>= 1) {
-      if (local_index < offset) {
 
-        float other = local_sums[ (local_id_ii + offset_ii) * num_wrk_items_x + (local_id_jj + offset_jj)];
-        float mine =  local_sums[local_id_ii * num_wrk_items_x + local_id_jj];
+    if (local_index < offset) {
+
+        float other = local_sums[ (local_id_ii) * num_wrk_items_x + (local_id_jj + offset)];
+        float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
 
         local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
-      }
-      barrier(CLK_LOCAL_MEM_FENCE);
     }
+    barrier(CLK_LOCAL_MEM_FENCE);
   }
-  if (local_index == 0) {
-    partial_sums[ timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
+  if ( (local_index_ii == 0) && (local_index_jj == 0) ) {
+    partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
   }
 }
 
