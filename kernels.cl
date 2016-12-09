@@ -27,8 +27,8 @@ void reduce(
   // local_sums[local_id_ii * num_wrk_items_x + local_id_jj]
 
   for(int offset = num_wrk_items_y / 2; 
-      offset_ii > 0;
-      offset_ii >>= 1){
+      offset > 0;
+      offset >>= 1){
 
     if (local_index < offset) {
 
@@ -39,7 +39,7 @@ void reduce(
     }
     barrier(CLK_LOCAL_MEM_FENCE);
   }
-  if ( (local_index_ii == 0) && (local_index_jj == 0) ) {
+  if ( (local_id_ii == 0) && (local_id_jj == 0) ) {
     partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
   }
 }
