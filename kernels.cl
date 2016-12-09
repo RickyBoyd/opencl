@@ -41,7 +41,7 @@ void reduce(
   }
 
   // Multistage reduction reduces horzontally into one column of values then reduces the column into (0,0)
-
+  barrier(CLK_LOCAL_MEM_FENCE);
   for(int offset = num_wrk_items_y / 2; 
       offset > 0;
       offset >>= 1){
