@@ -89,7 +89,18 @@ kernel void rebound(global float* cells,
     cells[MEM(ii, jj, 6, nx, ny)] = tmp_cells[MEM(ii, jj, 8, nx, ny)];
     cells[MEM(ii, jj, 7, nx, ny)] = tmp_cells[MEM(ii, jj, 5, nx, ny)];
     cells[MEM(ii, jj, 8, nx, ny)] = tmp_cells[MEM(ii, jj, 6, nx, ny)];
+
+    int num_wrk_items_x  = get_local_size(0);
+      //int num_wrk_items_y  = get_local_size(1);
+
+    int local_id_jj      = get_local_id(0);
+    int local_id_ii      = get_local_id(1);  
+    local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = 0;
+
+
     barrier(CLK_LOCAL_MEM_FENCE);
+   
+    reduce(local_sums, partial_sums, timestep);
 
   } else {
     const float c_sq = 1.0f / 3.0f; /* square of speed of sound */
@@ -233,30 +244,8 @@ kernel void rebound(global float* cells,
 
       barrier(CLK_LOCAL_MEM_FENCE);
    
-      int num_wrk_items_x  = get_local_size(0);
-      int num_wrk_items_y  = get_local_size(1); 
-
-      int group_id_jj       = get_group_id(0);
-      int group_id_ii       = get_group_id(1);
-
-      size_t global_size_x  = get_num_groups(0);
-      size_t global_size_y  = get_num_groups(1);  
-
-      float sum;                              
-      int ii;
-      int jj;                                      
-     
-      if (local_id_ii == 0 && local_id_jj == 0) {                      
-        sum = 0.0f;                            
-     
-        for (ii=0; ii<num_wrk_items_y; ii++) {
-          for(jj=0; jj < num_wrk_items_x; jj++){
-            sum += local_sums[ii * num_wrk_items_x + jj];
-          }           
-        }                                     
-        partial_sums[ timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = sum;         
-      }
-    }
+      reduce(local_sums, partial_sums, timestep);
+  }
 }
 
 

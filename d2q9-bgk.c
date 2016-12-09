@@ -193,6 +193,7 @@ int main(int argc, char* argv[])
 
   printf("Work group size: %zu\nNumber of work groups per timestep: %d \n", work_group_size, nwork_groups);
 
+  float *final_partial_sums = calloc(sizeof(float) * nwork_groups * params.maxIters);
 
   ocl.partial_sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(float) * nwork_groups * params.maxIters, NULL, &err);
     checkError(err, "Creating buffer d_partial_sums", __LINE__);
@@ -207,8 +208,13 @@ int main(int argc, char* argv[])
 
   err = clEnqueueWriteBuffer(
     ocl.queue, ocl.cells, CL_TRUE, 0,
-    sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
+    sizeof(cl_float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
   checkError(err, "writing cells data", __LINE__);
+
+  err = clEnqueueWriteBuffer(
+    ocl.queue, ocl.partial_sums, CL_TRUE, 0,
+    sizeof(cl_float) * nwork_groups * params.maxIters, final_partial_sums, 0, NULL, NULL);
+  checkError(err, "writing partial sums data", __LINE__);
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
@@ -222,14 +228,13 @@ int main(int argc, char* argv[])
 
   err = clEnqueueReadBuffer(
     ocl.queue, ocl.cells, CL_TRUE, 0,
-    sizeof(float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
+    sizeof(cl_float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
   checkError(err, "reading cells data", __LINE__);
 
-  float *final_partial_sums = malloc(sizeof(float) * nwork_groups * params.maxIters);
 
   err = clEnqueueReadBuffer(
     ocl.queue, ocl.partial_sums, CL_TRUE, 0,
-    sizeof(float) * nwork_groups * params.maxIters, final_partial_sums, 0, NULL, NULL);
+    sizeof(cl_float) * nwork_groups * params.maxIters, final_partial_sums, 0, NULL, NULL);
   checkError(err, "reading cells data", __LINE__);
 
   sum_partial_sums(params, final_partial_sums, av_vels, nwork_groups, tot_cells);
