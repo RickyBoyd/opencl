@@ -5,10 +5,9 @@
 #define MEM(ii, jj, kk, nx, ny) ( ( (nx) * (ny) * (kk) ) + ( (ii) * (nx) ) + (jj))
 
 void reduce(
-            __global float* buffer,
             __local float* local_sums,
-            __const int length,
-            __global float* result) {
+            __global float* partial_sums,
+            int timestep) {
 
    int num_wrk_items_x  = get_local_size(0);
    int num_wrk_items_y  = get_local_size(1);
