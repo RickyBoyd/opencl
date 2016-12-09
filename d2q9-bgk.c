@@ -188,7 +188,7 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  work_group_size = 32*32;
+  work_group_size = 16*16;
   int nwork_groups = params.nx * params.ny / work_group_size;
 
   printf("Work group size: %zu\nNumber of work groups per timestep: %d \n", work_group_size, nwork_groups);
@@ -355,7 +355,7 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
 
   // Enqueue kernel
   size_t global[2] = {params.nx, params.ny};
-  size_t local[2]  = {32, 32};
+  size_t local[2]  = {16, 16};
   err = clEnqueueNDRangeKernel(ocl.queue, ocl.rebound,
                                2, NULL, global, local, 0, NULL, NULL);
   checkError(err, "enqueueing rebound kernel", __LINE__);
@@ -527,10 +527,7 @@ int sum_partial_sums(const t_param params, float *partial_sums, float *av_vels, 
   for(int tt = 0; tt < params.maxIters; tt++){
     float sum = 0.0f;
     for(int w = 0; w < nwork_groups; w++){
-
       sum += partial_sums[tt*nwork_groups + w];
-      printf("%f\n", partial_sums[tt*nwork_groups + w]);
-
     }
     av_vels[tt] = sum/(float)tot_cells;
   }
