@@ -9,17 +9,17 @@ void reduce(
             global float* partial_sums,
             int timestep) {
 
-   size_t num_wrk_items_x  = get_local_size(0);
-   size_t num_wrk_items_y  = get_local_size(1);
+  size_t num_wrk_items_x  = get_local_size(0);
+  size_t num_wrk_items_y  = get_local_size(1);
 
-   size_t local_id_jj      = get_local_id(0);
-   size_t local_id_ii      = get_local_id(1);  
+  size_t local_id_jj      = get_local_id(0);
+  size_t local_id_ii      = get_local_id(1);  
 
-   size_t group_id_jj       = get_group_id(0);
-   size_t group_id_ii       = get_group_id(1);
+  size_t group_id_jj       = get_group_id(0);
+  size_t group_id_ii       = get_group_id(1);
 
-   size_t group_size_x  = get_num_groups(0);
-   size_t group_size_y  = get_num_groups(1);  
+  size_t group_size_x  = get_num_groups(0);
+  size_t group_size_y  = get_num_groups(1);  
 
   
   barrier(CLK_LOCAL_MEM_FENCE);
@@ -32,10 +32,9 @@ void reduce(
 
     if (local_id_jj < offset) {
 
-        float other = local_sums[ (local_id_ii) * num_wrk_items_x + (local_id_jj + offset)];
-        float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
+      float other = local_sums[ local_id_ii * num_wrk_items_x + (local_id_jj + offset)];
 
-        local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
+      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] += other;
     }
     barrier(CLK_LOCAL_MEM_FENCE);
   }
@@ -50,14 +49,12 @@ void reduce(
 
       if (local_id_ii < offset) {
 
-          float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + (local_id_jj)];
-          float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
+        float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + (local_id_jj)];
 
-          local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
+        local_sums[local_id_ii * num_wrk_items_x + local_id_jj] += other;
       }
       barrier(CLK_LOCAL_MEM_FENCE);
     }
-
 
     if ( local_id_jj == 0 ) {
       partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
