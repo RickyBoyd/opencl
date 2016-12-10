@@ -33,8 +33,9 @@ void reduce(
     if (local_id_jj < offset) {
 
       float other = local_sums[ local_id_ii * num_wrk_items_x + (local_id_jj + offset)];
+      float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
 
-      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] += other;
+      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
     }
     barrier(CLK_LOCAL_MEM_FENCE);
   }
@@ -42,7 +43,7 @@ void reduce(
 
   // Multistage reduction reduces horzontally into one column of values then reduces the column into (0,0)
   barrier(CLK_LOCAL_MEM_FENCE);
-  if(local_id_ii == 0){
+  if(local_id_jj == 0){
     for(size_t offset = num_wrk_items_y / 2; 
         offset > 0;
         offset >>= 1){
@@ -50,13 +51,14 @@ void reduce(
       if (local_id_ii < offset) {
 
         float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + (local_id_jj)];
+        float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
 
-        local_sums[local_id_ii * num_wrk_items_x + local_id_jj] += other;
+        local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
       }
       barrier(CLK_LOCAL_MEM_FENCE);
     }
 
-    if ( local_id_jj == 0 ) {
+    if ( local_id_ii == 0 ) {
       partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
     }
   }
