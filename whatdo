@@ -3,3 +3,5 @@
 3. kernelise collision and rebound
 4. structure of arrays
 5. kernelise av_velocity with reduction taken from handon OpenCl ex7
+6. work group size of 16*16 works much better
+7. try doing two stage reduction that redices over columns then row 0

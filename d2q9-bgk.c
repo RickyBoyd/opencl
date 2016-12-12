@@ -70,6 +70,8 @@
 
 #define MEM(ii, jj, kk, nx, ny) ( ( (nx) * (ny) * (kk) ) + ( (ii) * (nx) ) + (jj))
 
+#define WRK_GRP_SIZ_X (16)
+#define WRK_GRP_SIZ_Y (16)
 
 /* struct to hold the parameter values */
 typedef struct
@@ -188,7 +190,7 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
 
-  work_group_size = 16*16;
+  work_group_size = WRK_GRP_SIZ_X*WRK_GRP_SIZ_Y;
   int nwork_groups = params.nx * params.ny / work_group_size;
 
   printf("Work group size: %zu\nNumber of work groups per timestep: %d \n", work_group_size, nwork_groups);
@@ -340,7 +342,7 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
   checkError(err, "setting rebound arg 1", __LINE__);
   err = clSetKernelArg(ocl.rebound, 2, sizeof(cl_mem), &ocl.obstacles);
   checkError(err, "setting rebound arg 2", __LINE__);
-  err |= clSetKernelArg(ocl.rebound, 3, sizeof(float) * work_group_size, NULL);
+  err |= clSetKernelArg(ocl.rebound, 3, sizeof(cl_float) * work_group_size, NULL);
   checkError(err, "setting rebound arg 3", __LINE__);
   err |= clSetKernelArg(ocl.rebound, 4, sizeof(cl_mem), &ocl.partial_sums);
   checkError(err, "setting rebound arg 4", __LINE__);
@@ -355,7 +357,7 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
 
   // Enqueue kernel
   size_t global[2] = {params.nx, params.ny};
-  size_t local[2]  = {16, 16};
+  size_t local[2]  = {WRK_GRP_SIZ_X, WRK_GRP_SIZ_Y};
   err = clEnqueueNDRangeKernel(ocl.queue, ocl.rebound,
                                2, NULL, global, local, 0, NULL, NULL);
   checkError(err, "enqueueing rebound kernel", __LINE__);
