@@ -21,65 +21,33 @@ void reduce(
   size_t group_size_x  = get_num_groups(0);
   size_t group_size_y  = get_num_groups(1); 
 
-  size_t local_id = local_id_ii * num_wrk_items_x + local_id_jj;
-
-  
-  barrier(CLK_LOCAL_MEM_FENCE);   //////    OPENCL COMPILER NEEDS DIFFERENT ARGS/ and stuff COMPARE AOS TO SOA
-
-  // local_sums[local_id_ii * num_wrk_items_x + local_id_jj]
-
-  for(size_t offset = (num_wrk_items_x*num_wrk_items_y) / 2; 
-      offset > 0;
-      offset >>= 1){
-
-    if (local_id < offset) {
-
-      float other = local_sums[ local_id + offset ];
-      float mine =  local_sums[ local_id ];
-
-      local_sums[local_id] = mine + other;
+  for(int offset = num_wrk_items_x / 2; 
+      offset > 0; 
+      offset >>= 1) {
+    if (local_id_jj < offset) {
+      float other = local_sums[local_id_ii * num_wrk_items_x + local_id_jj + offset];
+      float mine  = local_sums[local_id_ii * num_wrk_items_x + local_id_jj];
+      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
     }
     barrier(CLK_LOCAL_MEM_FENCE);
-  }  
-
-  if(local_id_ii == 0 && local_id_jj == 0){
-    partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
   }
-  // Multistage reduction reduces horzontally into one column of values then reduces the column into (0,0)
-  barrier(CLK_LOCAL_MEM_FENCE);
+
+  for(int offset = num_wrk_items_y / 2; 
+      offset > 0; 
+      offset >>= 1) {
+    if (local_id_ii < offset && local_id_jj == 0) {
+      float other = local_sums[(local_id_ii+offset) * num_wrk_items_x + local_id_jj];
+      float mine  = local_sums[local_id_ii * num_wrk_items_x + local_id_jj];
+      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+  }
+
+  if (local_id_ii == 0 && local_id_jj == 0) {
+    partial_sums[timestep * (group_size_x * group_size_y) + group_id_ii * group_size_x + group_id_jj] = local_sums[0];
+  }
   
-  // float sum;                              
-  //  int ii;
-  //  int jj;                                      
-   
-  //  if(local_id_jj == 0) {                      
-  //     sum = 0.0f;                            
-  //     for (ii=0; ii<num_wrk_items_y; ii++) {
-  //       sum += local_sums[ii * num_wrk_items_x + jj];          
-  //     }                                     
-  //     partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = sum;         
-  //  }
 
-
-  // for(size_t offset = num_wrk_items_y / 2; 
-  //     offset > 0;
-  //     offset >>= 1){
-
-  //   if (local_id_ii < offset && local_id_jj == 0) {
-
-  //     float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + local_id_jj];
-  //     float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
-
-  //     local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
-  //   }
-
-  //   barrier(CLK_LOCAL_MEM_FENCE);
-  // }
-
-  //   if ( (local_id_ii == 0) && (local_id_jj == 0)){ {
-  //     partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
-  //   }
-  // }
 }
 
 
@@ -95,7 +63,7 @@ void reduce(
 
 //    int local_id_jj      = get_local_id(0);
 //    int local_id_ii      = get_local_id(1);  
-
+0
 //    int group_id_jj       = get_group_id(0);
 //    int group_id_ii       = get_group_id(1);
 
