@@ -22,7 +22,7 @@ void reduce(
   size_t group_size_y  = get_num_groups(1);  
 
   
-  barrier(CLK_LOCAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE);   //////    OPENCL COMPILER NEEDS DIFFERENT ARGS/ and stuff
 
   // local_sums[local_id_ii * num_wrk_items_x + local_id_jj]
 
@@ -43,23 +43,23 @@ void reduce(
 
   // Multistage reduction reduces horzontally into one column of values then reduces the column into (0,0)
 
-  if(local_id_jj == 0){
-    for(size_t offset = num_wrk_items_y / 2; 
-        offset > 0;
-        offset >>= 1){
+  
+  for(size_t offset = num_wrk_items_y / 2; 
+      offset > 0;
+      offset >>= 1){
 
-      if (local_id_ii < offset) {
+    if (local_id_ii < offset) {
 
-        float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + local_id_jj];
-        float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
+      float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + local_id_jj];
+      float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
 
-        local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
-      }
-
-      barrier(CLK_LOCAL_MEM_FENCE);
+      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
     }
 
-    if ( local_id_ii == 0 ) {
+    barrier(CLK_LOCAL_MEM_FENCE);
+  }
+
+    if ( (local_id_ii == 0) && (local_id_jj == 0)){ {
       partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
     }
   }
