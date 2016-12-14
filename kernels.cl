@@ -42,7 +42,7 @@ void reduce(
     barrier(CLK_LOCAL_MEM_FENCE);
   }  
 
-  if(local_id_ii < offset && local_id_jj == 0){
+  if(local_id_ii == 0 && local_id_jj == 0){
     partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
   }
   // Multistage reduction reduces horzontally into one column of values then reduces the column into (0,0)
