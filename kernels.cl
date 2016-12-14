@@ -48,12 +48,10 @@ void reduce(
    int ii;
    int jj;                                      
    
-   if (local_id_ii == 0 && local_id_jj == 0) {                      
+   if(local_id_jj == 0) {                      
       sum = 0.0f;                            
       for (ii=0; ii<num_wrk_items_y; ii++) {
-          for(jj=0; jj < num_wrk_items_x; jj++){
-              sum += local_sums[ii * num_wrk_items_x + jj];
-          }           
+        sum += local_sums[ii * num_wrk_items_x + jj];          
       }                                     
       partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = sum;         
    }
