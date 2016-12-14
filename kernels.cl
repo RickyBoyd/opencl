@@ -7,7 +7,7 @@
 void reduce(
             local float* local_sums,
             global float* partial_sums,
-            int timestep) {
+            int timestep, int nwork_groups) {
 
   size_t num_wrk_items_x  = get_local_size(0);
   size_t num_wrk_items_y  = get_local_size(1);
@@ -19,7 +19,7 @@ void reduce(
   size_t group_id_ii       = get_group_id(1);
 
   size_t group_size_x  = get_num_groups(0);
-  size_t group_size_y  = get_num_groups(1); 
+ // size_t group_size_y  = get_num_groups(1); 
 
   for(int offset = num_wrk_items_x / 2; 
       offset > 0; 
@@ -44,7 +44,7 @@ void reduce(
   }
 
   if (local_id_ii == 0 && local_id_jj == 0) {
-    partial_sums[timestep * (group_size_x * group_size_y) + group_id_ii * group_size_x + group_id_jj] = local_sums[0];
+    partial_sums[timestep * (nwork_groups) + group_id_ii * group_size_x + group_id_jj] = local_sums[0];
   }
 }
 
@@ -151,7 +151,7 @@ kernel void rebound(global float* cells,
                       local  float*    local_sums,                          
                       global float*    partial_sums,
                       int nx, int ny, float omega,
-                      int timestep)
+                      int timestep, int nwork_groups)
 {
   int jj = get_global_id(0);
   int ii = get_global_id(1);
@@ -176,7 +176,7 @@ kernel void rebound(global float* cells,
     int local_id_ii      = get_local_id(1);  
     local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = 0;
    
-    reduce(local_sums, partial_sums, timestep);  
+    reduce(local_sums, partial_sums, timestep, nwork_groups);  
 
   } else {
     const float c_sq = 1.0f / 3.0f; /* square of speed of sound */
@@ -317,7 +317,7 @@ kernel void rebound(global float* cells,
       int local_id_ii      = get_local_id(1);  
       local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = tot_u;
    
-      reduce(local_sums, partial_sums, timestep);  
+      reduce(local_sums, partial_sums, timestep, nwork_groups);  
   }
 }
 

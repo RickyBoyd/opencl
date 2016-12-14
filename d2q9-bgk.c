@@ -354,6 +354,9 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
   checkError(err, "setting rebound arg 7", __LINE__);
   err = clSetKernelArg(ocl.rebound, 8, sizeof(cl_int), &tt);
   checkError(err, "setting rebound arg 8", __LINE__);
+  err = clSetKernelArg(ocl.rebound, 9, sizeof(cl_int), &nwork_groups);
+  checkError(err, "setting rebound arg 9", __LINE__);
+
 
   // Enqueue kernel
   size_t global[2] = {params.nx, params.ny};
@@ -528,7 +531,7 @@ int sum_partial_sums(const t_param params, float *partial_sums, float *av_vels, 
 
   for(int tt = 0; tt < params.maxIters; tt++){
     float sum = 0.0f;
-    for(int w = 0; w < nwork_groups; w++){
+    for(size_t w = 0; w < nwork_groups; w++){
       sum += partial_sums[tt*nwork_groups + w];
     }
     av_vels[tt] = sum/(float)tot_cells;
