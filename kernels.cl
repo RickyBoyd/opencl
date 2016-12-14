@@ -44,25 +44,40 @@ void reduce(
   // Multistage reduction reduces horzontally into one column of values then reduces the column into (0,0)
   barrier(CLK_LOCAL_MEM_FENCE);
   
-  for(size_t offset = num_wrk_items_y / 2; 
-      offset > 0;
-      offset >>= 1){
+  float sum;                              
+   int ii;
+   int jj;                                      
+   
+   if (local_id_ii == 0 && local_id_jj == 0) {                      
+      sum = 0.0f;                            
+      for (ii=0; ii<num_wrk_items_y; ii++) {
+          for(jj=0; jj < num_wrk_items_x; jj++){
+              sum += local_sums[ii * num_wrk_items_x + jj];
+          }           
+      }                                     
+      partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = sum;         
+   }
 
-    if (local_id_ii < offset && local_id_jj == 0) {
 
-      float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + local_id_jj];
-      float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
+  // for(size_t offset = num_wrk_items_y / 2; 
+  //     offset > 0;
+  //     offset >>= 1){
 
-      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
-    }
+  //   if (local_id_ii < offset && local_id_jj == 0) {
 
-    barrier(CLK_LOCAL_MEM_FENCE);
-  }
+  //     float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + local_id_jj];
+  //     float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
 
-    if ( (local_id_ii == 0) && (local_id_jj == 0)){ {
-      partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
-    }
-  }
+  //     local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
+  //   }
+
+  //   barrier(CLK_LOCAL_MEM_FENCE);
+  // }
+
+  //   if ( (local_id_ii == 0) && (local_id_jj == 0)){ {
+  //     partial_sums[ timestep * (group_size_x * group_size_y) + group_size_x * group_id_ii + group_id_jj ] = local_sums[0]; 
+  //   }
+  // }
 }
 
 
