@@ -22,7 +22,7 @@ void reduce(
   size_t group_size_y  = get_num_groups(1);  
 
   
-  barrier(CLK_LOCAL_MEM_FENCE);   //////    OPENCL COMPILER NEEDS DIFFERENT ARGS/ and stuff
+  barrier(CLK_LOCAL_MEM_FENCE);   //////    OPENCL COMPILER NEEDS DIFFERENT ARGS/ and stuff COMPARE AOS TO SOA
 
   // local_sums[local_id_ii * num_wrk_items_x + local_id_jj]
 
@@ -38,17 +38,17 @@ void reduce(
       local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
     }
     barrier(CLK_LOCAL_MEM_FENCE);
-  }
+  }  
 
 
   // Multistage reduction reduces horzontally into one column of values then reduces the column into (0,0)
-
+  barrier(CLK_LOCAL_MEM_FENCE);
   
   for(size_t offset = num_wrk_items_y / 2; 
       offset > 0;
       offset >>= 1){
 
-    if (local_id_ii < offset) {
+    if (local_id_ii < offset && local_id_jj == 0) {
 
       float other = local_sums[ (local_id_ii + offset) * num_wrk_items_x + local_id_jj];
       float mine =  local_sums[ local_id_ii * num_wrk_items_x + local_id_jj ];
