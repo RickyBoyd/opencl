@@ -46,8 +46,6 @@ void reduce(
   if (local_id_ii == 0 && local_id_jj == 0) {
     partial_sums[timestep * (group_size_x * group_size_y) + group_id_ii * group_size_x + group_id_jj] = local_sums[0];
   }
-  
-
 }
 
 
@@ -63,7 +61,7 @@ void reduce(
 
 //    int local_id_jj      = get_local_id(0);
 //    int local_id_ii      = get_local_id(1);  
-0
+
 //    int group_id_jj       = get_group_id(0);
 //    int group_id_ii       = get_group_id(1);
 
