@@ -50,16 +50,16 @@ void reduce(
 {                                                            
 
    int local_id = get_local_id(1); * get_local_size(0) + get_local_id(0);                                      
-   
+   barrier(CLK_LOCAL_MEM_FENCE);
+
    for(int offset =  (get_local_size(0)*get_local_size(1))/2; 
       offset>0; 
       offset >>= 1){
-    barrier(CLK_LOCAL_MEM_FENCE);
 
     if(local_id < offset){
       local_sums[local_id] += local_sums[local_id + offset];
     }
-    
+    barrier(CLK_LOCAL_MEM_FENCE);
    }
    if(local_id == 0){
      partial_sums[ timestep * (get_num_groups(0) * get_num_groups(1)) + get_num_groups(0) * get_group_id(1) + get_group_id(0) ] = local_sums[0];         
