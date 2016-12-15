@@ -136,8 +136,8 @@ kernel void rebound(global float* cells,
                       int nx, int ny, float omega,
                       int timestep, int nwork_groups)
 {
-  int jj = get_global_id(0) % get_global_size(0);
-  int ii = get_global_id(0) / get_global_size(0);
+  int jj = get_global_id(0) % nx;
+  int ii = get_global_id(0) / nx;
 
   if (obstacles[ii * nx + jj])
   {
