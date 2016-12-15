@@ -51,14 +51,21 @@ void reduce(
 
    int local_id = get_local_id(1) * get_local_size(0) + get_local_id(0);                                      
    
-  for(int offset =  (get_local_size(0)*get_local_size(1))/2; 
-      offset>0; 
-      offset >>= 1){
+  // for(int offset =  (get_local_size(0)*get_local_size(1))/2; 
+  //     offset>0; 
+  //     offset >>= 1){
 
-    if(local_id < offset){
-      local_sums[local_id] += local_sums[local_id + offset];
+  //   if(local_id < offset){
+  //     local_sums[local_id] += local_sums[local_id + offset];
+  //   }
+  //   barrier(CLK_LOCAL_MEM_FENCE);
+  // }
+  if(local_id == 0)
+  {
+    for(int i = 0; i < (get_local_size(0)*get_local_size(1)); i++)
+    {
+      local_sums[0] += local_sums[i];
     }
-    barrier(CLK_LOCAL_MEM_FENCE);
   }
 
    if(local_id == 0){
