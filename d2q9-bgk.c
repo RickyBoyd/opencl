@@ -359,10 +359,10 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
 
 
   // Enqueue kernel
-  size_t global[1] = {params.nx * params.ny};
-  size_t local[1]  = {WRK_GRP_SIZ_X * WRK_GRP_SIZ_Y};
+  size_t global[2] = {params.nx, params.ny};
+  size_t local[2]  = {WRK_GRP_SIZ_X, WRK_GRP_SIZ_Y};
   err = clEnqueueNDRangeKernel(ocl.queue, ocl.rebound,
-                               1, NULL, global, local, 0, NULL, NULL);
+                               2, NULL, global, local, 0, NULL, NULL);
   checkError(err, "enqueueing rebound kernel", __LINE__);
 
   // Wait for kernel to finish
