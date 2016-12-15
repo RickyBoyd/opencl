@@ -60,19 +60,17 @@ void reduce(
    size_t global_size_x  = get_num_groups(0);
    size_t global_size_y  = get_num_groups(1);  
 
-   float sum;                              
-   int ii;
-   int jj;                                      
+   int local_id = local_id_ii * num_wrk_items_x + local_id_jj;                                      
    
-   if (local_id_ii == 0 && local_id_jj == 0) {                      
-      sum = 0.0f;                            
-      for (ii=0; ii<num_wrk_items_y; ii++) {
-          for(jj=0; jj < num_wrk_items_x; jj++){
-              sum += local_sums[ii * num_wrk_items_x + jj];
-          }           
-      }                                     
-      partial_sums[ timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = sum;         
+   for(int offset =  (num_wrk_items_x*num_wrk_items_y)/2; offset>0; offset >>= 1){
+    if(local_id < offset){
+      local_sums[local_id] += local_sums[local_id + offset];
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
    }
+
+  partial_sums[ timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = local_sums[0];         
+   
 }
 
 kernel void accelerate_flow(global float* cells,
