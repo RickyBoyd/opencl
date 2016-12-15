@@ -47,30 +47,23 @@ void reduce(
     local  float*    local_sums,                          
     global float*    partial_sums,
     int timestep)                        
-{                                                          
-   int num_wrk_items_x  = get_local_size(0);
-   int num_wrk_items_y  = get_local_size(1);
+{                                                            
 
-   int local_id_jj      = get_local_id(0);
-   int local_id_ii      = get_local_id(1);  
-
-   int group_id_jj       = get_group_id(0);
-   int group_id_ii       = get_group_id(1);
-
-   size_t global_size_x  = get_num_groups(0);
-   size_t global_size_y  = get_num_groups(1);  
-
-   int local_id = local_id_ii * num_wrk_items_x + local_id_jj;                                      
+   int local_id = get_local_id(1) * get_local_size(0) + get_local_id(0);                                      
    
-   for(int offset =  (num_wrk_items_x*num_wrk_items_y)/2; offset>0; offset >>= 1){
+  for(int offset =  (get_local_size(0)*get_local_size(1))/2; 
+      offset>0; 
+      offset >>= 1){
+
     if(local_id < offset){
       local_sums[local_id] += local_sums[local_id + offset];
     }
     barrier(CLK_LOCAL_MEM_FENCE);
-   }
+  }
 
-  partial_sums[ timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = local_sums[0];         
-   
+   if(local_id == 0){
+     partial_sums[ timestep*get_num_groups(0)*get_num_groups(1) + get_num_groups(0)*get_group_id(1) + get_group_id(0) ] = local_sums[0];         
+   }
 }
 
 kernel void accelerate_flow(global float* cells,
