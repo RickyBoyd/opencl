@@ -49,9 +49,9 @@ void reduce(
     int timestep)                        
 {                                                            
 
-   int local_id = get_local_id(1) * get_local_size(0) + get_local_id(0);                                      
+   int local_id = get_local_id(0);                                      
    
-   for(int offset =  (get_local_size(0)*get_local_size(1))/2; 
+   for(int offset =  get_local_size(0)/2; 
       offset>0; 
       offset >>= 1){
     barrier(CLK_LOCAL_MEM_FENCE);
@@ -62,7 +62,7 @@ void reduce(
 
    }
    if(local_id == 0){
-     partial_sums[ timestep * (get_num_groups(0) * get_num_groups(1)) + get_num_groups(0) * get_group_id(1) + get_group_id(0) ] = local_sums[0];         
+     partial_sums[ timestep * get_num_groups(0) + get_group_id(0) ] = local_sums[0];         
    }
 }
 
@@ -136,8 +136,8 @@ kernel void rebound(global float* cells,
                       int nx, int ny, float omega,
                       int timestep, int nwork_groups)
 {
-  int jj = get_global_id(0);
-  int ii = get_global_id(1);
+  int jj = get_global_id(0) % get_global_size(0);
+  int ii = get_global_id(0) / get_global_size(0);
 
   if (obstacles[ii * nx + jj])
   {
@@ -152,12 +152,8 @@ kernel void rebound(global float* cells,
     cells[MEM(ii, jj, 7, nx, ny)] = tmp_cells[MEM(ii, jj, 5, nx, ny)];
     cells[MEM(ii, jj, 8, nx, ny)] = tmp_cells[MEM(ii, jj, 6, nx, ny)];
 
-    int num_wrk_items_x  = get_local_size(0);
-      //int num_wrk_items_y  = get_local_size(1);
-
-    int local_id_jj      = get_local_id(0);
-    int local_id_ii      = get_local_id(1);  
-    local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = 0;
+    int local_id      = get_local_id(0);
+    local_sums[local_id] = 0;
    
     reduce(local_sums, partial_sums, timestep);  
 
@@ -293,12 +289,10 @@ kernel void rebound(global float* cells,
       /* accumulate the norm of x- and y- velocity components */
       tot_u = (float)sqrt((double)((u_x * u_x) + (u_y * u_y)));
 
-      int num_wrk_items_x  = get_local_size(0);
       //int num_wrk_items_y  = get_local_size(1);
 
-      int local_id_jj      = get_local_id(0);
-      int local_id_ii      = get_local_id(1);  
-      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = tot_u;
+      int local_id      = get_local_id(0);
+      local_sums[local_id] = tot_u;
    
       reduce(local_sums, partial_sums, timestep);  
   }
