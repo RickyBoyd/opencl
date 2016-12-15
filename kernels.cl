@@ -19,26 +19,18 @@ void reduce(
   size_t group_id_ii       = get_group_id(1);
 
   size_t group_size_x  = get_num_groups(0);
- // size_t group_size_y  = get_num_groups(1); 
+ //size_t group_size_y  = get_num_groups(1); 
 
-  for(int offset = num_wrk_items_x / 2; 
+  size_t local_id = local_id_ii * num_wrk_items_x + local_id_jj;
+
+
+  for(int offset = (num_wrk_items_x*num_wrk_items_y) / 2; 
       offset > 0; 
       offset >>= 1) {
-    if (local_id_jj < offset) {
-      float other = local_sums[local_id_ii * num_wrk_items_x + local_id_jj + offset];
-      float mine  = local_sums[local_id_ii * num_wrk_items_x + local_id_jj];
-      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);
-  }
-
-  for(int offset = num_wrk_items_y / 2; 
-      offset > 0; 
-      offset >>= 1) {
-    if (local_id_ii < offset && local_id_jj == 0) {
-      float other = local_sums[(local_id_ii+offset) * num_wrk_items_x + local_id_jj];
-      float mine  = local_sums[local_id_ii * num_wrk_items_x + local_id_jj];
-      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = mine + other;
+    if (local_id < offset) {
+      float other = local_sums[local_id + offset];
+      float mine  = local_sums[local_id];
+      local_sums[local_id] = mine + other;
     }
     barrier(CLK_LOCAL_MEM_FENCE);
   }
