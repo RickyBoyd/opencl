@@ -70,8 +70,8 @@
 
 #define MEM(ii, jj, kk, nx, ny) ( ( (nx) * (ny) * (kk) ) + ( (ii) * (nx) ) + (jj))
 
-#define WRK_GRP_SIZ_X (1)
-#define WRK_GRP_SIZ_Y (1)
+#define WRK_GRP_SIZ_X (32)
+#define WRK_GRP_SIZ_Y (32)
 
 /* struct to hold the parameter values */
 typedef struct

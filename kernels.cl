@@ -4,76 +4,76 @@
 
 #define MEM(ii, jj, kk, nx, ny) ( ( (nx) * (ny) * (kk) ) + ( (ii) * (nx) ) + (jj))
 
-void reduce(
-            local float* local_sums,
-            global float* partial_sums,
-            int timestep, int nwork_groups) {
+// void reduce(
+//             local float* local_sums,
+//             global float* partial_sums,
+//             int timestep, int nwork_groups) {
 
-  size_t num_wrk_items_x  = get_local_size(0);
-  size_t num_wrk_items_y  = get_local_size(1);
+//   size_t num_wrk_items_x  = get_local_size(0);
+//   size_t num_wrk_items_y  = get_local_size(1);
 
-  size_t local_id_jj      = get_local_id(0);
-  size_t local_id_ii      = get_local_id(1);  
+//   size_t local_id_jj      = get_local_id(0);
+//   size_t local_id_ii      = get_local_id(1);  
 
-  size_t group_id_jj       = get_group_id(0);
-  size_t group_id_ii       = get_group_id(1);
+//   size_t group_id_jj       = get_group_id(0);
+//   size_t group_id_ii       = get_group_id(1);
 
-  size_t group_size_x  = get_num_groups(0);
- //size_t group_size_y  = get_num_groups(1); 
+//   size_t group_size_x  = get_num_groups(0);
+//  //size_t group_size_y  = get_num_groups(1); 
 
-  size_t local_id = local_id_ii * num_wrk_items_x + local_id_jj;
-
-
-  for(int offset = (num_wrk_items_x*num_wrk_items_y) / 2; 
-      offset > 0; 
-      offset >>= 1) {
-    if (local_id < offset) {
-      float other = local_sums[local_id + offset];
-      float mine  = local_sums[local_id];
-      local_sums[local_id] = mine + other;
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);
-  }
-
-  if (local_id_ii == 0 && local_id_jj == 0) {
-    partial_sums[timestep * (nwork_groups) + group_id_ii * group_size_x + group_id_jj] = local_sums[0];
-  }
-}
+//   size_t local_id = local_id_ii * num_wrk_items_x + local_id_jj;
 
 
+//   for(int offset = (num_wrk_items_x*num_wrk_items_y) / 2; 
+//       offset > 0; 
+//       offset >>= 1) {
+//     if (local_id < offset) {
+//       float other = local_sums[local_id + offset];
+//       float mine  = local_sums[local_id];
+//       local_sums[local_id] = mine + other;
+//     }
+//     barrier(CLK_LOCAL_MEM_FENCE);
+//   }
 
-
-// void reduce(                                          
-//     local  float*    local_sums,                          
-//     global float*    partial_sums,
-//     int timestep)                        
-// {                                                          
-//    int num_wrk_items_x  = get_local_size(0);
-//    int num_wrk_items_y  = get_local_size(1);
-
-//    int local_id_jj      = get_local_id(0);
-//    int local_id_ii      = get_local_id(1);  
-
-//    int group_id_jj       = get_group_id(0);
-//    int group_id_ii       = get_group_id(1);
-
-//    size_t global_size_x  = get_num_groups(0);
-//    size_t global_size_y  = get_num_groups(1);  
-
-//    float sum;                              
-//    int ii;
-//    int jj;                                      
-   
-//    if (local_id_ii == 0 && local_id_jj == 0) {                      
-//       sum = 0.0f;                            
-//       for (ii=0; ii<num_wrk_items_y; ii++) {
-//           for(jj=0; jj < num_wrk_items_x; jj++){
-//               sum += local_sums[ii * num_wrk_items_x + jj];
-//           }           
-//       }                                     
-//       partial_sums[ timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = sum;         
-//    }
+//   if (local_id_ii == 0 && local_id_jj == 0) {
+//     partial_sums[timestep * (nwork_groups) + group_id_ii * group_size_x + group_id_jj] = local_sums[0];
+//   }
 // }
+
+
+
+
+void reduce(                                          
+    local  float*    local_sums,                          
+    global float*    partial_sums,
+    int timestep)                        
+{                                                          
+   int num_wrk_items_x  = get_local_size(0);
+   int num_wrk_items_y  = get_local_size(1);
+
+   int local_id_jj      = get_local_id(0);
+   int local_id_ii      = get_local_id(1);  
+
+   int group_id_jj       = get_group_id(0);
+   int group_id_ii       = get_group_id(1);
+
+   size_t global_size_x  = get_num_groups(0);
+   size_t global_size_y  = get_num_groups(1);  
+
+   float sum;                              
+   int ii;
+   int jj;                                      
+   
+   if (local_id_ii == 0 && local_id_jj == 0) {                      
+      sum = 0.0f;                            
+      for (ii=0; ii<num_wrk_items_y; ii++) {
+          for(jj=0; jj < num_wrk_items_x; jj++){
+              sum += local_sums[ii * num_wrk_items_x + jj];
+          }           
+      }                                     
+      partial_sums[ timestep * (global_size_x * global_size_y) + global_size_x * group_id_ii + group_id_jj ] = sum;         
+   }
+}
 
 kernel void accelerate_flow(global float* cells,
                             global int* obstacles,
@@ -168,7 +168,7 @@ kernel void rebound(global float* cells,
     int local_id_ii      = get_local_id(1);  
     local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = 0;
    
-    reduce(local_sums, partial_sums, timestep, nwork_groups);  
+    reduce(local_sums, partial_sums, timestep);  
 
   } else {
     const float c_sq = 1.0f / 3.0f; /* square of speed of sound */
@@ -309,7 +309,7 @@ kernel void rebound(global float* cells,
       int local_id_ii      = get_local_id(1);  
       local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = tot_u;
    
-      reduce(local_sums, partial_sums, timestep, nwork_groups);  
+      reduce(local_sums, partial_sums, timestep);  
   }
 }
 
