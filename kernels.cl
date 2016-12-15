@@ -60,6 +60,7 @@ void reduce(
   //   }
   //   barrier(CLK_LOCAL_MEM_FENCE);
   // }
+  barrier(CLK_LOCAL_MEM_FENCE);
   if(local_id == 0)
   {
     for(int i = 0; i < (get_local_size(0)*get_local_size(1)); i++)
@@ -143,8 +144,9 @@ kernel void rebound(global float* cells,
                       int nx, int ny, float omega,
                       int timestep, int nwork_groups)
 {
-  int jj = get_global_id(0);
-  int ii = get_global_id(1);
+  int kk = get_global_id(0);
+  int jj = kk % nx;
+  int ii = kk / nx;
 
   if (obstacles[ii * nx + jj])
   {
@@ -163,8 +165,8 @@ kernel void rebound(global float* cells,
       //int num_wrk_items_y  = get_local_size(1);
 
     int local_id_jj      = get_local_id(0);
-    int local_id_ii      = get_local_id(1);  
-    local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = 0;
+    // int local_id_ii      = get_local_id(1);  
+    local_sums[local_id_jj] = 0;
    
     reduce(local_sums, partial_sums, timestep);  
 
@@ -304,8 +306,8 @@ kernel void rebound(global float* cells,
       //int num_wrk_items_y  = get_local_size(1);
 
       int local_id_jj      = get_local_id(0);
-      int local_id_ii      = get_local_id(1);  
-      local_sums[local_id_ii * num_wrk_items_x + local_id_jj] = tot_u;
+      // int local_id_ii      = get_local_id(1);  
+      local_sums[local_id_jj] = tot_u;
    
       reduce(local_sums, partial_sums, timestep);  
   }
