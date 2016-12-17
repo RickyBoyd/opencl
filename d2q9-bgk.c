@@ -395,9 +395,7 @@ int reduce_partials(const t_param params, size_t nwork_groups, int tot_cells, t_
   checkError(err, "setting reduce_partials arg 1", __LINE__);
   err = clSetKernelArg(ocl.reduce_partials, 2, sizeof(cl_float) * nwork_groups, NULL);
   checkError(err, "setting reduce_partials arg 2", __LINE__);
-  err |= clSetKernelArg(ocl.reduce_partials, 3, sizeof(cl_int) , &nwork_groups);
-  checkError(err, "setting reduce_partials arg 3", __LINE__);
-  err |= clSetKernelArg(ocl.reduce_partials, 4, sizeof(cl_int), &tot_cells);
+  err |= clSetKernelArg(ocl.reduce_partials, 3, sizeof(cl_int), &tot_cells);
   checkError(err, "setting reduce_partials arg 4", __LINE__);
 
   // Enqueue kernel

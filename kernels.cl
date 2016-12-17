@@ -131,13 +131,14 @@ kernel void propagate(global float* cells,
 kernel void reduce_partials(global float* partial_sums,
                             global float* sums,
                             local  float* scratch,
-                            int num_partial_sums,
                             int tot_cells)
 {
   
    int local_id = get_local_id(0);
 
    int timestep = get_global_id(0);
+
+   int num_partial_sums = get_local_size(0);
 
    // to reduce x values only x/2 kernels need to be launched so each kernel copies 2 values into the local memeory
    // in a similar fashion to how the reduction begins
