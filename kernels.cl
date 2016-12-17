@@ -136,7 +136,7 @@ kernel void reduce_partials(global float* partial_sums,
   
    int local_id = get_local_id(0);
 
-   int timestep = get_global_id(0);
+   int timestep = get_group_id(0);
 
    int num_partial_sums = get_local_size(0);
 
