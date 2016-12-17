@@ -272,29 +272,31 @@ kernel void rebound(global float* cells,
       d_equ[8] = w2 * local_density * ((u[8] * x3 + u[8] * u[8]) / x2 + x1);
 
         /* relaxation step */
-        
-      cells[MEM(ii, jj, 0, nx, ny)] = tmp0 + omega * (d_equ[0] - tmp0);
-      cells[MEM(ii, jj, 1, nx, ny)] = tmp1 + omega * (d_equ[1] - tmp1);
-      cells[MEM(ii, jj, 2, nx, ny)] = tmp2 + omega * (d_equ[2] - tmp2);
-      cells[MEM(ii, jj, 3, nx, ny)] = tmp3 + omega * (d_equ[3] - tmp3);
-      cells[MEM(ii, jj, 4, nx, ny)] = tmp4 + omega * (d_equ[4] - tmp4);
-      cells[MEM(ii, jj, 5, nx, ny)] = tmp5 + omega * (d_equ[5] - tmp5);
-      cells[MEM(ii, jj, 6, nx, ny)] = tmp6 + omega * (d_equ[6] - tmp6);
-      cells[MEM(ii, jj, 7, nx, ny)] = tmp7 + omega * (d_equ[7] - tmp7);
-      cells[MEM(ii, jj, 8, nx, ny)] = tmp8 + omega * (d_equ[8] - tmp8);
 
       float tot_u = 0.0f;          /* accumulated magnitudes of velocity for each cell */
           /* local density total */
       local_density = 0.0f;
-      tmp0 = cells[MEM(ii, jj, 0, nx, ny)];
-      tmp1 = cells[MEM(ii, jj, 1, nx, ny)];
-      tmp2 = cells[MEM(ii, jj, 2, nx, ny)];
-      tmp3 = cells[MEM(ii, jj, 3, nx, ny)];
-      tmp4 = cells[MEM(ii, jj, 4, nx, ny)];
-      tmp5 = cells[MEM(ii, jj, 5, nx, ny)];
-      tmp6 = cells[MEM(ii, jj, 6, nx, ny)];
-      tmp7 = cells[MEM(ii, jj, 7, nx, ny)];
-      tmp8 = cells[MEM(ii, jj, 8, nx, ny)];
+      float tmp_v0 = tmp0 + omega * (d_equ[0] - tmp0);
+      float tmp_v1 = tmp1 + omega * (d_equ[1] - tmp1);
+      float tmp_v2 = tmp2 + omega * (d_equ[2] - tmp2);
+      float tmp_v3 = tmp3 + omega * (d_equ[3] - tmp3);
+      float tmp_v4 = tmp4 + omega * (d_equ[4] - tmp4);
+      float tmp_v5 = tmp5 + omega * (d_equ[5] - tmp5);
+      float tmp_v6 = tmp6 + omega * (d_equ[6] - tmp6);
+      float tmp_v7 = tmp7 + omega * (d_equ[7] - tmp7);
+      float tmp_v8 = tmp8 + omega * (d_equ[8] - tmp8);
+
+      cells[MEM(ii, jj, 0, nx, ny)] = tmp_v0;
+      cells[MEM(ii, jj, 1, nx, ny)] = tmp_v1;
+      cells[MEM(ii, jj, 2, nx, ny)] = tmp_v2;
+      cells[MEM(ii, jj, 3, nx, ny)] = tmp_v3;
+      cells[MEM(ii, jj, 4, nx, ny)] = tmp_v4;
+      cells[MEM(ii, jj, 5, nx, ny)] = tmp_v5;
+      cells[MEM(ii, jj, 6, nx, ny)] = tmp_v6;
+      cells[MEM(ii, jj, 7, nx, ny)] = tmp_v7;
+      cells[MEM(ii, jj, 8, nx, ny)] = tmp_v8;
+
+
       local_density += tmp0;
       local_density += tmp1;
       local_density += tmp2;
