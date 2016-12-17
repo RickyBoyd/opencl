@@ -136,20 +136,18 @@ kernel void reduce_partials(global float* partial_sums,
   
    int local_id = get_local_id(0);
 
-   int timestep = get_group_id(0);
-
-   int num_partial_sums = get_local_size(0);
+   int global_id = get_global_id(0);
 
    // to reduce x values only x/2 kernels need to be launched so each kernel copies 2 values into the local memeory
    // in a similar fashion to how the reduction begins
-   scratch[local_id] = partial_sums[timestep * num_partial_sums + local_id];
+   scratch[local_id] = partial_sums[ global_id ];
 
    //scratch[local_id + num_partial_sums/2] = partial_sums[timestep * num_partial_sums + local_id + num_partial_sums/2];
 
    //MUSTC COPY VALUES INTO SCRATCH SPACE FIRST  
 
    if(local_id == 0) printf("val: %f\n", scratch[local_id]);
-   for(int offset =  num_partial_sums/2; 
+   for(int offset =  get_local_size(0)/2; 
       offset>0; 
       offset >>= 1){
     barrier(CLK_LOCAL_MEM_FENCE);
@@ -160,7 +158,7 @@ kernel void reduce_partials(global float* partial_sums,
 
    }
    if(local_id == 0){
-     sums[ timestep ] = scratch[0]/tot_cells;         
+     sums[ get_group_id(0) ] = scratch[0]/tot_cells;         
    }
 }
 
