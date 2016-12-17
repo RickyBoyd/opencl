@@ -147,7 +147,7 @@ kernel void reduce_partials(global float* partial_sums,
 
    //MUSTC COPY VALUES INTO SCRATCH SPACE FIRST  
 
-   
+   if(local_id == 0) printf("val: %f\n", scratch[local_id]);
    for(int offset =  num_partial_sums/2; 
       offset>0; 
       offset >>= 1){
