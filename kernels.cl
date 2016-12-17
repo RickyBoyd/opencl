@@ -128,6 +128,41 @@ kernel void propagate(global float* cells,
   tmp_cells[MEM(ii, jj, 8, nx, ny)] = cells[MEM(y_n, x_w, 8, nx, ny)]; /* south-east */
 }
 
+kernel void reduce_partials(global float* partial_sums,
+                            global float* sums,
+                            local  float* scratch,
+                            int num_partial_sums,
+                            int tot_cells)
+{
+  
+   int local_id = get_local_id(0);
+
+   int timestep = get_global_id(0);
+
+   // to reduce x values only x/2 kernels need to be launched so each kernel copies 2 values into the local memeory
+   // in a similar fashion to how the reduction begins
+   scratch[local_id] = partial_sums[timestep * num_partial_sums + local_id];
+
+   scratch[local_id + num_partial_sums/2] = partial_sums[timestep * num_partial_sums + local_id + num_partial_sums/2];
+
+   //MUSTC COPY VALUES INTO SCRATCH SPACE FIRST  
+
+   
+   for(int offset =  num_partial_sums/2; 
+      offset>0; 
+      offset >>= 1){
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if(local_id < offset){
+      scratch[local_id] += scratch[local_id + offset];
+    }
+
+   }
+   if(local_id == 0){
+     sums[ timestep ] = scratch[0]/tot_cells;         
+   }
+}
+
 kernel void rebound(global float* cells,
                       global float* tmp_cells,
                       global int* obstacles,

@@ -101,6 +101,7 @@ typedef struct
   cl_mem tmp_cells;
   cl_mem obstacles;
   cl_mem partial_sums;
+  cl_mem sums;
 } t_ocl;
 
 /* struct to hold the 'speed' values */
@@ -126,6 +127,7 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
 int collision(const t_param params, float* cells, float* tmp_cells, int* obstacles, t_ocl ocl);
 int write_values(const t_param params, float* cells, int* obstacles, float* av_vels);
 
+int reduce_partials(const t_param params, size_t nwork_groups, tot_cells, t_ocl ocl);
 
 int sum_partial_sums(const t_param params, float *partial_sums, float *av_vels, size_t nwork_groups, int tot_cells);
 /* finalise, including freeing up allocated memory */
@@ -201,6 +203,11 @@ int main(int argc, char* argv[])
     checkError(err, "Creating buffer d_partial_sums", __LINE__);
   checkError(err, "creating partial_sums buffer", __LINE__);
 
+  ocl.sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(float) * params.maxIters, NULL, &err);
+    checkError(err, "Creating buffer d_partial_sums", __LINE__);
+  checkError(err, "creating partial_sums buffer", __LINE__);
+
+
 
   // Write obstacles to OpenCL buffer
   err = clEnqueueWriteBuffer(
@@ -228,6 +235,8 @@ int main(int argc, char* argv[])
 #endif
   }
 
+  reduce_partials(params, nwork_groups, tot_cells, ocl);
+
   err = clEnqueueReadBuffer(
     ocl.queue, ocl.cells, CL_TRUE, 0,
     sizeof(cl_float) * NSPEEDS * params.nx * params.ny, cells, 0, NULL, NULL);
@@ -236,10 +245,10 @@ int main(int argc, char* argv[])
 
   err = clEnqueueReadBuffer(
     ocl.queue, ocl.partial_sums, CL_TRUE, 0,
-    sizeof(cl_float) * nwork_groups * params.maxIters, final_partial_sums, 0, NULL, NULL);
-  checkError(err, "reading cells data", __LINE__);
+    sizeof(cl_float) * params.maxIters, av_vels, 0, NULL, NULL);
+  checkError(err, "reading av_vels data", __LINE__);
 
-  sum_partial_sums(params, final_partial_sums, av_vels, nwork_groups, tot_cells);
+  //sum_partial_sums(params, final_partial_sums, av_vels, nwork_groups, tot_cells);
 
   gettimeofday(&timstr, NULL);
   toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -361,6 +370,38 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
   // Enqueue kernel
   size_t global[1] = {params.nx * params.ny};
   size_t local[1]  = {WRK_GRP_SIZ_X * WRK_GRP_SIZ_Y};
+  err = clEnqueueNDRangeKernel(ocl.queue, ocl.rebound,
+                               1, NULL, global, local, 0, NULL, NULL);
+  checkError(err, "enqueueing rebound kernel", __LINE__);
+
+  // Wait for kernel to finish
+  err = clFinish(ocl.queue);
+  checkError(err, "waiting for rebound kernel", __LINE__);
+
+
+  return EXIT_SUCCESS;
+}
+
+int reduce_partials(const t_param params, size_t nwork_groups, tot_cells, t_ocl ocl)
+{
+  /* loop over the cells in the grid */
+
+  cl_int err;
+  // Set kernel arguments
+  err = clSetKernelArg(ocl.rebound, 0, sizeof(cl_mem), &ocl.partial_sums);
+  checkError(err, "setting rebound arg 0", __LINE__);
+  err = clSetKernelArg(ocl.rebound, 1, sizeof(cl_mem), &ocl.sums);
+  checkError(err, "setting rebound arg 1", __LINE__);
+  err = clSetKernelArg(ocl.rebound, 2, sizeof(cl_float) * nwork_groups, NULL);
+  checkError(err, "setting rebound arg 2", __LINE__);
+  err |= clSetKernelArg(ocl.rebound, 3, sizeof(cl_int) , &nwork_groups);
+  checkError(err, "setting rebound arg 3", __LINE__);
+  err |= clSetKernelArg(ocl.rebound, 4, sizeof(cl_int), &tot_cells);
+  checkError(err, "setting rebound arg 4", __LINE__);
+
+  // Enqueue kernel
+  size_t global[1] = { params.maxIters };
+  size_t local[1]  = { nwork_groups/2 };
   err = clEnqueueNDRangeKernel(ocl.queue, ocl.rebound,
                                1, NULL, global, local, 0, NULL, NULL);
   checkError(err, "enqueueing rebound kernel", __LINE__);
