@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
 
   float *final_partial_sums = calloc(sizeof(float), nwork_groups * params.maxIters);
 
-  ocl.partial_sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(cl_float) * nwork_groups * params.maxIters, NULL, &err);
+  ocl.partial_sums = clCreateBuffer(ocl.context, CL_MEM_READ_WRITE, sizeof(cl_float) * nwork_groups * params.maxIters, NULL, &err);
     checkError(err, "Creating buffer d_partial_sums", __LINE__);
   checkError(err, "creating partial_sums buffer", __LINE__);
 
