@@ -70,8 +70,8 @@
 
 #define MEM(ii, jj, kk, nx, ny) ( ( (nx) * (ny) * (kk) ) + ( (ii) * (nx) ) + (jj))
 
-#define WRK_GRP_SIZ_X (32)
-#define WRK_GRP_SIZ_Y (32)
+#define WRK_GRP_SIZ_X (16)
+#define WRK_GRP_SIZ_Y (16)
 
 /* struct to hold the parameter values */
 typedef struct
@@ -152,6 +152,16 @@ void usage(const char* exe);
 
 cl_device_id selectOpenCLDevice();
 
+void swap_cells(float** cells, float** tmp_cells, t_ocl* ocl) {
+    int* temp = *cells;
+    *cells = *tmp_cells;
+    *tmp_cells = temp;
+
+    cl_mem tmp = ocl->cells;
+    ocl->cells = ocl->tmp_cells;
+    ocl->cells = tmp;
+}
+
 /*
 ** main program:
 ** initialise, timestep loop, finalise
@@ -229,6 +239,7 @@ int main(int argc, char* argv[])
   for (int tt = 0; tt < params.maxIters; tt++)
   {
     timestep(params, cells, tmp_cells, obstacles, work_group_size, nwork_groups, tt, ocl);
+    swap_cells(cells, tmp_cells, &ocl);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -275,7 +286,7 @@ int timestep(const t_param params, float* cells, float* tmp_cells, int* obstacle
 {
 
   accelerate_flow(params, cells, obstacles, ocl);
-  propagate(params, cells, tmp_cells, ocl);
+  //propagate(params, cells, tmp_cells, ocl);
   rebound(params, cells, tmp_cells, obstacles, work_group_size, nwork_groups, tt, ocl);
   return EXIT_SUCCESS;
 }

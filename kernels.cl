@@ -146,7 +146,6 @@ kernel void reduce_partials(global float* partial_sums,
 
    //MUSTC COPY VALUES INTO SCRATCH SPACE FIRST  
 
-   if(local_id == 0) printf("val: %f\n", scratch[local_id]);
    for(int offset =  get_local_size(0)/2; 
       offset>0; 
       offset >>= 1){
@@ -173,21 +172,36 @@ kernel void rebound(global float* cells,
   int jj = get_global_id(0) % nx;
   int ii = get_global_id(0) / nx;
 
+  int y_n = (ii + 1) % ny;
+  int x_e = (jj + 1) % nx;
+  int y_s = (ii == 0) ? (ii + ny - 1) : (ii - 1);
+  int x_w = (jj == 0) ? (jj + nx - 1) : (jj - 1);
+
+  float tmp0 = cells[MEM(ii, jj,  0, nx, ny)]; /* central cell, no movement */
+  float tmp1 = cells[MEM(ii, x_w, 1, nx, ny)]; /* east */
+  float tmp2 = cells[MEM(y_s, jj, 2, nx, ny)]; /* north */
+  float tmp3 = cells[MEM(ii, x_e, 3, nx, ny)]; /* west */
+  float tmp4 = cells[MEM(y_n, jj, 4, nx, ny)]; /* south */
+  float tmp5 = cells[MEM(y_s, x_w, 5, nx, ny)]; /* north-east */
+  float tmp6 = cells[MEM(y_s, x_e, 6, nx, ny)]; /* north-west */
+  float tmp7 = cells[MEM(y_n, x_e, 7, nx, ny)]; /* south-west */
+  float tmp8 = cells[MEM(y_n, x_w, 8, nx, ny)]; /* south-east */
+
+
   if (obstacles[ii * nx + jj])
   {
     /* called after propagate, so taking values from scratch space
     ** mirroring, and writing into main grid */
-    cells[MEM(ii, jj, 1, nx, ny)] = tmp_cells[MEM(ii, jj, 3, nx, ny)];
-    cells[MEM(ii, jj, 2, nx, ny)] = tmp_cells[MEM(ii, jj, 4, nx, ny)];
-    cells[MEM(ii, jj, 3, nx, ny)] = tmp_cells[MEM(ii, jj, 1, nx, ny)];
-    cells[MEM(ii, jj, 4, nx, ny)] = tmp_cells[MEM(ii, jj, 2, nx, ny)];
-    cells[MEM(ii, jj, 5, nx, ny)] = tmp_cells[MEM(ii, jj, 7, nx, ny)];
-    cells[MEM(ii, jj, 6, nx, ny)] = tmp_cells[MEM(ii, jj, 8, nx, ny)];
-    cells[MEM(ii, jj, 7, nx, ny)] = tmp_cells[MEM(ii, jj, 5, nx, ny)];
-    cells[MEM(ii, jj, 8, nx, ny)] = tmp_cells[MEM(ii, jj, 6, nx, ny)];
+    cells[MEM(ii, jj, 1, nx, ny)] = tmp3;
+    cells[MEM(ii, jj, 2, nx, ny)] = tmp4;
+    cells[MEM(ii, jj, 3, nx, ny)] = tmp1;
+    cells[MEM(ii, jj, 4, nx, ny)] = tmp2;
+    cells[MEM(ii, jj, 5, nx, ny)] = tmp7;
+    cells[MEM(ii, jj, 6, nx, ny)] = tmp8;
+    cells[MEM(ii, jj, 7, nx, ny)] = tmp5;
+    cells[MEM(ii, jj, 8, nx, ny)] = tmp6;
 
-    int local_id      = get_local_id(0);
-    local_sums[local_id] = 0;
+    local_sums[get_local_id(0)] = 0;
    
     reduce(local_sums, partial_sums, timestep);  
 
@@ -201,15 +215,6 @@ kernel void rebound(global float* cells,
 
     /* compute local density total */
       float local_density = 0.0f;
-      float tmp0 = tmp_cells[MEM(ii, jj, 0, nx, ny)];
-      float tmp1 = tmp_cells[MEM(ii, jj, 1, nx, ny)];
-      float tmp2 = tmp_cells[MEM(ii, jj, 2, nx, ny)];
-      float tmp3 = tmp_cells[MEM(ii, jj, 3, nx, ny)];
-      float tmp4 = tmp_cells[MEM(ii, jj, 4, nx, ny)];
-      float tmp5 = tmp_cells[MEM(ii, jj, 5, nx, ny)];
-      float tmp6 = tmp_cells[MEM(ii, jj, 6, nx, ny)];
-      float tmp7 = tmp_cells[MEM(ii, jj, 7, nx, ny)];
-      float tmp8 = tmp_cells[MEM(ii, jj, 8, nx, ny)];
 
       local_density += tmp0;
       local_density += tmp1;
@@ -327,8 +332,7 @@ kernel void rebound(global float* cells,
 
       //int num_wrk_items_y  = get_local_size(1);
 
-      int local_id      = get_local_id(0);
-      local_sums[local_id] = tot_u;
+      local_sums[get_local_id(0)] = tot_u;
    
       reduce(local_sums, partial_sums, timestep);  
   }
