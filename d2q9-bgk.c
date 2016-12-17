@@ -153,13 +153,13 @@ void usage(const char* exe);
 cl_device_id selectOpenCLDevice();
 
 void swap_cells(float** cells, float** tmp_cells, t_ocl* ocl) {
-    int* temp = *cells;
+    float* temp = *cells;
     *cells = *tmp_cells;
     *tmp_cells = temp;
 
-    cl_mem tmp = ocl->cells;
+    cl_mem tmp_cl = ocl->cells;
     ocl->cells = ocl->tmp_cells;
-    ocl->cells = tmp;
+    ocl->cells = tmp_cl;
 }
 
 /*
@@ -239,7 +239,7 @@ int main(int argc, char* argv[])
   for (int tt = 0; tt < params.maxIters; tt++)
   {
     timestep(params, cells, tmp_cells, obstacles, work_group_size, nwork_groups, tt, ocl);
-    swap_cells(cells, tmp_cells, &ocl);
+    swap_cells(&cells, &tmp_cells, &ocl);
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
