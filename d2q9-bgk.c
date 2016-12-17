@@ -159,7 +159,7 @@ void swap_cells(float** cells, float** tmp_cells, t_ocl* ocl) {
 
     cl_mem tmp_cl = ocl->cells;
     ocl->cells = ocl->tmp_cells;
-    ocl->cells = tmp_cl;
+    ocl->tmp_cells = tmp_cl;
 }
 
 /*
