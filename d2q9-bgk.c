@@ -127,7 +127,7 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
 int collision(const t_param params, float* cells, float* tmp_cells, int* obstacles, t_ocl ocl);
 int write_values(const t_param params, float* cells, int* obstacles, float* av_vels);
 
-int reduce_partials(const t_param params, size_t nwork_groups, tot_cells, t_ocl ocl);
+int reduce_partials(const t_param params, size_t nwork_groups, int tot_cells, t_ocl ocl);
 
 int sum_partial_sums(const t_param params, float *partial_sums, float *av_vels, size_t nwork_groups, int tot_cells);
 /* finalise, including freeing up allocated memory */
@@ -382,7 +382,7 @@ int rebound(const t_param params, float* cells, float* tmp_cells, int* obstacles
   return EXIT_SUCCESS;
 }
 
-int reduce_partials(const t_param params, size_t nwork_groups, tot_cells, t_ocl ocl)
+int reduce_partials(const t_param params, size_t nwork_groups, int tot_cells, t_ocl ocl)
 {
   /* loop over the cells in the grid */
 
