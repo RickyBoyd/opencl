@@ -143,7 +143,7 @@ kernel void reduce_partials(global float* partial_sums,
    // in a similar fashion to how the reduction begins
    scratch[local_id] = partial_sums[timestep * num_partial_sums + local_id];
 
-   scratch[local_id + num_partial_sums/2] = partial_sums[timestep * num_partial_sums + local_id + num_partial_sums/2];
+   //scratch[local_id + num_partial_sums/2] = partial_sums[timestep * num_partial_sums + local_id + num_partial_sums/2];
 
    //MUSTC COPY VALUES INTO SCRATCH SPACE FIRST  
 

@@ -200,11 +200,11 @@ int main(int argc, char* argv[])
 
   float *final_partial_sums = calloc(sizeof(float), nwork_groups * params.maxIters);
 
-  ocl.partial_sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(float) * nwork_groups * params.maxIters, NULL, &err);
+  ocl.partial_sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(cl_float) * nwork_groups * params.maxIters, NULL, &err);
     checkError(err, "Creating buffer d_partial_sums", __LINE__);
   checkError(err, "creating partial_sums buffer", __LINE__);
 
-  ocl.sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(float) * params.maxIters, NULL, &err);
+  ocl.sums = clCreateBuffer(ocl.context, CL_MEM_WRITE_ONLY, sizeof(cl_float) * params.maxIters, NULL, &err);
     checkError(err, "Creating buffer d_partial_sums", __LINE__);
   checkError(err, "creating partial_sums buffer", __LINE__);
 
@@ -402,7 +402,7 @@ int reduce_partials(const t_param params, size_t nwork_groups, int tot_cells, t_
 
   // Enqueue kernel
   size_t global[1] = { params.maxIters };
-  size_t local[1]  = { nwork_groups/2 };
+  size_t local[1]  = { nwork_groups };
   err = clEnqueueNDRangeKernel(ocl.queue, ocl.reduce_partials,
                                1, NULL, global, local, 0, NULL, NULL);
   checkError(err, "enqueueing reduce_partials kernel", __LINE__);
