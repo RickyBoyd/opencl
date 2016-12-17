@@ -96,6 +96,7 @@ typedef struct
   cl_kernel  accelerate_flow;
   cl_kernel  propagate;
   cl_kernel  rebound;
+  cl_kernel  reduce_partials;
 
   cl_mem cells;
   cl_mem tmp_cells;
@@ -388,27 +389,27 @@ int reduce_partials(const t_param params, size_t nwork_groups, int tot_cells, t_
 
   cl_int err;
   // Set kernel arguments
-  err = clSetKernelArg(ocl.rebound, 0, sizeof(cl_mem), &ocl.partial_sums);
-  checkError(err, "setting rebound arg 0", __LINE__);
-  err = clSetKernelArg(ocl.rebound, 1, sizeof(cl_mem), &ocl.sums);
-  checkError(err, "setting rebound arg 1", __LINE__);
-  err = clSetKernelArg(ocl.rebound, 2, sizeof(cl_float) * nwork_groups, NULL);
-  checkError(err, "setting rebound arg 2", __LINE__);
-  err |= clSetKernelArg(ocl.rebound, 3, sizeof(cl_int) , &nwork_groups);
-  checkError(err, "setting rebound arg 3", __LINE__);
-  err |= clSetKernelArg(ocl.rebound, 4, sizeof(cl_int), &tot_cells);
-  checkError(err, "setting rebound arg 4", __LINE__);
+  err = clSetKernelArg(ocl.reduce_partials, 0, sizeof(cl_mem), &ocl.partial_sums);
+  checkError(err, "setting reduce_partials arg 0", __LINE__);
+  err = clSetKernelArg(ocl.reduce_partials, 1, sizeof(cl_mem), &ocl.sums);
+  checkError(err, "setting reduce_partials arg 1", __LINE__);
+  err = clSetKernelArg(ocl.reduce_partials, 2, sizeof(cl_float) * nwork_groups, NULL);
+  checkError(err, "setting reduce_partials arg 2", __LINE__);
+  err |= clSetKernelArg(ocl.reduce_partials, 3, sizeof(cl_int) , &nwork_groups);
+  checkError(err, "setting reduce_partials arg 3", __LINE__);
+  err |= clSetKernelArg(ocl.reduce_partials, 4, sizeof(cl_int), &tot_cells);
+  checkError(err, "setting reduce_partials arg 4", __LINE__);
 
   // Enqueue kernel
   size_t global[1] = { params.maxIters };
   size_t local[1]  = { nwork_groups/2 };
-  err = clEnqueueNDRangeKernel(ocl.queue, ocl.rebound,
+  err = clEnqueueNDRangeKernel(ocl.queue, ocl.reduce_partials,
                                1, NULL, global, local, 0, NULL, NULL);
-  checkError(err, "enqueueing rebound kernel", __LINE__);
+  checkError(err, "enqueueing reduce_partials kernel", __LINE__);
 
   // Wait for kernel to finish
   err = clFinish(ocl.queue);
-  checkError(err, "waiting for rebound kernel", __LINE__);
+  checkError(err, "waiting for reduce_partials kernel", __LINE__);
 
 
   return EXIT_SUCCESS;
@@ -793,6 +794,8 @@ int initialise(const char* paramfile, const char* obstaclefile,
   checkError(err, "creating propagate kernel", __LINE__);
   ocl->rebound = clCreateKernel(ocl->program, "rebound", &err);
   checkError(err, "creating rebound kernel", __LINE__);
+  ocl->reduce_partials = clCreateKernel(ocl->program, "reduce_partials", &err);
+  checkError(err, "creating reduce_partials kernel", __LINE__);
 
   // Allocate OpenCL buffers
   ocl->cells = clCreateBuffer(
@@ -835,6 +838,7 @@ int finalise(const t_param* params, float** cells_ptr, float** tmp_cells_ptr,
   clReleaseKernel(ocl.accelerate_flow);
   clReleaseKernel(ocl.propagate);
   clReleaseKernel(ocl.rebound);
+  clReleaseKernel(ocl.reduce_partials)
   clReleaseProgram(ocl.program);
   clReleaseCommandQueue(ocl.queue);
   clReleaseContext(ocl.context);
