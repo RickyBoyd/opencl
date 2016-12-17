@@ -245,7 +245,7 @@ int main(int argc, char* argv[])
 
 
   err = clEnqueueReadBuffer(
-    ocl.queue, ocl.partial_sums, CL_TRUE, 0,
+    ocl.queue, ocl.sums, CL_TRUE, 0,
     sizeof(cl_float) * params.maxIters, av_vels, 0, NULL, NULL);
   checkError(err, "reading av_vels data", __LINE__);
 
