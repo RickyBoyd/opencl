@@ -192,14 +192,14 @@ kernel void rebound(global float* cells,
   {
     /* called after propagate, so taking values from scratch space
     ** mirroring, and writing into main grid */
-    cells[MEM(ii, jj, 1, nx, ny)] = tmp3;
-    cells[MEM(ii, jj, 2, nx, ny)] = tmp4;
-    cells[MEM(ii, jj, 3, nx, ny)] = tmp1;
-    cells[MEM(ii, jj, 4, nx, ny)] = tmp2;
-    cells[MEM(ii, jj, 5, nx, ny)] = tmp7;
-    cells[MEM(ii, jj, 6, nx, ny)] = tmp8;
-    cells[MEM(ii, jj, 7, nx, ny)] = tmp5;
-    cells[MEM(ii, jj, 8, nx, ny)] = tmp6;
+    tmp_cells[MEM(ii, jj, 1, nx, ny)] = tmp3;
+    tmp_cells[MEM(ii, jj, 2, nx, ny)] = tmp4;
+    tmp_cells[MEM(ii, jj, 3, nx, ny)] = tmp1;
+    tmp_cells[MEM(ii, jj, 4, nx, ny)] = tmp2;
+    tmp_cells[MEM(ii, jj, 5, nx, ny)] = tmp7;
+    tmp_cells[MEM(ii, jj, 6, nx, ny)] = tmp8;
+    tmp_cells[MEM(ii, jj, 7, nx, ny)] = tmp5;
+    tmp_cells[MEM(ii, jj, 8, nx, ny)] = tmp6;
 
     local_sums[get_local_id(0)] = 0;
    
@@ -291,15 +291,15 @@ kernel void rebound(global float* cells,
       float tmp_v7 = tmp7 + omega * (d_equ[7] - tmp7);
       float tmp_v8 = tmp8 + omega * (d_equ[8] - tmp8);
 
-      cells[MEM(ii, jj, 0, nx, ny)] = tmp_v0;
-      cells[MEM(ii, jj, 1, nx, ny)] = tmp_v1;
-      cells[MEM(ii, jj, 2, nx, ny)] = tmp_v2;
-      cells[MEM(ii, jj, 3, nx, ny)] = tmp_v3;
-      cells[MEM(ii, jj, 4, nx, ny)] = tmp_v4;
-      cells[MEM(ii, jj, 5, nx, ny)] = tmp_v5;
-      cells[MEM(ii, jj, 6, nx, ny)] = tmp_v6;
-      cells[MEM(ii, jj, 7, nx, ny)] = tmp_v7;
-      cells[MEM(ii, jj, 8, nx, ny)] = tmp_v8;
+      tmp_cells[MEM(ii, jj, 0, nx, ny)] = tmp_v0;
+      tmp_cells[MEM(ii, jj, 1, nx, ny)] = tmp_v1;
+      tmp_cells[MEM(ii, jj, 2, nx, ny)] = tmp_v2;
+      tmp_cells[MEM(ii, jj, 3, nx, ny)] = tmp_v3;
+      tmp_cells[MEM(ii, jj, 4, nx, ny)] = tmp_v4;
+      tmp_cells[MEM(ii, jj, 5, nx, ny)] = tmp_v5;
+      tmp_cells[MEM(ii, jj, 6, nx, ny)] = tmp_v6;
+      tmp_cells[MEM(ii, jj, 7, nx, ny)] = tmp_v7;
+      tmp_cells[MEM(ii, jj, 8, nx, ny)] = tmp_v8;
 
 
       local_density += tmp0;
