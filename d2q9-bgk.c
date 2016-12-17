@@ -401,7 +401,7 @@ int reduce_partials(const t_param params, size_t nwork_groups, int tot_cells, t_
   checkError(err, "setting reduce_partials arg 4", __LINE__);
 
   // Enqueue kernel
-  size_t global[1] = { params.maxIters };
+  size_t global[1] = { params.maxIters * nwork_groups};
   size_t local[1]  = { nwork_groups };
   err = clEnqueueNDRangeKernel(ocl.queue, ocl.reduce_partials,
                                1, NULL, global, local, 0, NULL, NULL);
