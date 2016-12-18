@@ -278,18 +278,17 @@ kernel void rebound(global float* cells,
 
         /* relaxation step */
 
-      float tot_u = 0.0f;          /* accumulated magnitudes of velocity for each cell */
           /* local density total */
       local_density = 0.0f;
-      float tmp_v0 = tmp0 + omega * (d_equ[0] - tmp0);
-      float tmp_v1 = tmp1 + omega * (d_equ[1] - tmp1);
-      float tmp_v2 = tmp2 + omega * (d_equ[2] - tmp2);
-      float tmp_v3 = tmp3 + omega * (d_equ[3] - tmp3);
-      float tmp_v4 = tmp4 + omega * (d_equ[4] - tmp4);
-      float tmp_v5 = tmp5 + omega * (d_equ[5] - tmp5);
-      float tmp_v6 = tmp6 + omega * (d_equ[6] - tmp6);
-      float tmp_v7 = tmp7 + omega * (d_equ[7] - tmp7);
-      float tmp_v8 = tmp8 + omega * (d_equ[8] - tmp8);
+      tmp0 = tmp0 + omega * (d_equ[0] - tmp0);
+      tmp1 = tmp1 + omega * (d_equ[1] - tmp1);
+      tmp2 = tmp2 + omega * (d_equ[2] - tmp2);
+      tmp3 = tmp3 + omega * (d_equ[3] - tmp3);
+      tmp4 = tmp4 + omega * (d_equ[4] - tmp4);
+      tmp5 = tmp5 + omega * (d_equ[5] - tmp5);
+      tmp6 = tmp6 + omega * (d_equ[6] - tmp6);
+      tmp7 = tmp7 + omega * (d_equ[7] - tmp7);
+      tmp8 = tmp8 + omega * (d_equ[8] - tmp8);
 
       tmp_cells[MEM(ii, jj, 0, nx, ny)] = tmp_v0;
       tmp_cells[MEM(ii, jj, 1, nx, ny)] = tmp_v1;
@@ -327,12 +326,10 @@ kernel void rebound(global float* cells,
                        + tmp7
                        + tmp8))
                    / local_density;
-      /* accumulate the norm of x- and y- velocity components */
-      tot_u = (float)sqrt((double)((u_x * u_x) + (u_y * u_y)));
 
       //int num_wrk_items_y  = get_local_size(1);
 
-      local_sums[get_local_id(0)] = tot_u;
+      local_sums[get_local_id(0)] = (float)sqrt((double)((u_x * u_x) + (u_y * u_y)));
    
       reduce(local_sums, partial_sums, timestep);  
   }
