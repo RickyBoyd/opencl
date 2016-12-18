@@ -246,16 +246,6 @@ kernel void rebound(global float* cells,
       float u_sq = u_x * u_x + u_y * u_y;
 
         /* directional velocity components */
-      float u[NSPEEDS];
-      u[1] =   u_x;        /* east */
-      u[2] =         u_y;  /* north */
-      u[3] = - u_x;        /* west */
-      u[4] =       - u_y;  /* south */
-      u[5] =   u_x + u_y;  /* north-east */
-      u[6] = - u_x + u_y;  /* north-west */
-      u[7] = - u_x - u_y;  /* south-west */
-      u[8] =   u_x - u_y;  /* south-east */
-
         /* equilibrium densities */
       float d_equ[NSPEEDS];
         /* zero velocity density: weight w0 */
@@ -264,17 +254,17 @@ kernel void rebound(global float* cells,
 
       d_equ[0] = w0 * local_density * (1.0f - u_sq / x3);
 
-      d_equ[1] = w1 * local_density * ((u[1] * x3 + u[1] * u[1]) / x2 + x1);
-      d_equ[2] = w1 * local_density * ((u[2] * x3 + u[2] * u[2]) / x2 + x1);
-      d_equ[3] = w1 * local_density * ((u[3] * x3 + u[3] * u[3]) / x2 + x1);
-      d_equ[4] = w1 * local_density * ((u[4] * x3 + u[4] * u[4]) / x2 + x1);
+      d_equ[1] = w1 * local_density * ((u_x * x3 + u_x * u_x) / x2 + x1);
+      d_equ[2] = w1 * local_density * ((u_y * x3 + u_y * u_y) / x2 + x1);
+      d_equ[3] = w1 * local_density * (((-u_x) * x3 + (-u_x) * (-u_x)) / x2 + x1);
+      d_equ[4] = w1 * local_density * (((-u_y) * x3 + (-u_y) * (-u_y)) / x2 + x1);
 
          //diagonal speeds: weight w2 
 
-      d_equ[5] = w2 * local_density * ((u[5] * x3 + u[5] * u[5]) / x2 + x1);
-      d_equ[6] = w2 * local_density * ((u[6] * x3 + u[6] * u[6]) / x2 + x1);
-      d_equ[7] = w2 * local_density * ((u[7] * x3 + u[7] * u[7]) / x2 + x1);
-      d_equ[8] = w2 * local_density * ((u[8] * x3 + u[8] * u[8]) / x2 + x1);
+      d_equ[5] = w2 * local_density * (((u_x + u_y) * x3 + (u_x + u_y) * (u_x + u_y)) / x2 + x1);
+      d_equ[6] = w2 * local_density * (((-u_x + u_y) * x3 + (-u_x + u_y) * (-u_x + u_y)) / x2 + x1);
+      d_equ[7] = w2 * local_density * (((-u_x - u_y) * x3 + (-u_x - u_y) * (-u_x - u_y)) / x2 + x1);
+      d_equ[8] = w2 * local_density * (( (u_x - u_y) * x3 + (u_x - u_y) * (u_x - u_y)) / x2 + x1);
 
         /* relaxation step */
 
