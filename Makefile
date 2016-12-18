@@ -21,7 +21,7 @@ REF_AV_VELS_FILE=check/256x256.av_vels.dat
 all: $(EXE)
 
 $(EXE): $(EXE).c
-	$(CC) $(CFLAGS) $^ $(LIBS) -o $@
+	$(CC) $(CFLAGS) $^ $(LIBS) -o $@ -D WRK_GRP_SIZ_X=$(WRK_GRP_SIZ_X) - D WRK_GRP_SIZ_Y=$(WRK_GRP_SIZ_Y)
 
 check:
 	python check/check.py --ref-av-vels-file=$(REF_AV_VELS_FILE) --ref-final-state-file=$(REF_FINAL_STATE_FILE) --av-vels-file=$(AV_VELS_FILE) --final-state-file=$(FINAL_STATE_FILE)

@@ -40,4 +40,5 @@ echo "Using GPU at index $device"
 numcores=`wc $PBS_NODEFILE | awk '{ print $1 }'`
 
 #! Run the executable
-$application $options
+#$application $options
+../Autotuning/autotune tune.conf
