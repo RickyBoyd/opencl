@@ -83,19 +83,28 @@ kernel void accelerate_flow(global float* cells,
 
   /* if the cell is not occupied and
   ** we don't send a negative density */
+
+  float cells3 = cells[MEM(ii, jj, 3, nx, ny)];
+  float cells6 = cells[MEM(ii, jj, 6, nx, ny)];
+  float cells7 = cells[MEM(ii, jj, 7, nx, ny)];
+
   if (!obstacles[ii * nx + jj]
-      && (cells[MEM(ii, jj, 3, nx, ny)] - w1) > 0.0f
-      && (cells[MEM(ii, jj, 6, nx, ny)] - w2) > 0.0f
-      && (cells[MEM(ii, jj, 7, nx, ny)] - w2) > 0.0f)
+      && (cells3 - w1) > 0.0f
+      && (cells6 - w2) > 0.0f
+      && (cells7 - w2) > 0.0f)
   {
     /* increase 'east-side' densities */
     cells[MEM(ii, jj, 1, nx, ny)] += w1;
     cells[MEM(ii, jj, 5, nx, ny)] += w2;
     cells[MEM(ii, jj, 8, nx, ny)] += w2;
     /* decrease 'west-side' densities */
-    cells[MEM(ii, jj, 3, nx, ny)] -= w1;
-    cells[MEM(ii, jj, 6, nx, ny)] -= w2;
-    cells[MEM(ii, jj, 7, nx, ny)] -= w2;
+    cells3 -= w1;
+    cells6 -= w2;
+    cells7 -= w2;
+
+    cells[MEM(ii, jj, 3, nx, ny)] = cells3;
+    cells[MEM(ii, jj, 6, nx, ny)] = cells6;
+    cells[MEM(ii, jj, 7, nx, ny)] = cells7;
   }
 }
 
