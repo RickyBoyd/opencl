@@ -1,15 +1,11 @@
-# HPC Coursework
-
-Base coursework for HPC 2016 class
+# HPC Coursework Using OpenCL
 
 * Source code is in the d2q9-bgk.c
 * Results checking scripts are in the check/ folder
 
 ## Compiling and running
 
-To compile type `make`. Editing the values for `CC` and `CFLAGS` in the Makefile can be used to enable different compiler options or use a different compiler. These can also be passed on the command line:
-
-    $ make CFLAGS="-O3 -fopenmp -DDEBUG"
+To compile type `make`. Editing the values for `CC` and `CFLAGS` in the Makefile can be used to enable different compiler options or use a different compiler.
 
 Input parameter and obstacle files are all specified on the command line of the `d2q9-bgk.exe` executable.
 
